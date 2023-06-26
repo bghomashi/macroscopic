@@ -1,6 +1,8 @@
 #include "laser.h"
 #include "maths/constants.h"
 
+#include <iostream>
+
 Laser::Laser() {}
 Laser::Laser(double peak_I0_wcm2, double waist_um, double wavelength_nm) :
     _peak_I0_wcm2(peak_I0_wcm2), _waist_um(waist_um), _wavelength_nm(wavelength_nm) {
@@ -22,6 +24,9 @@ Laser::Laser(double peak_I0_wcm2, double waist_um, double wavelength_nm, double 
 double Laser::IntensityAt(double r, double z) const {
     double wz = Radius(z);
     double I = _peak_I0 * (_waist/wz)*(_waist/wz) * exp(-2.*(r/wz)*(r/wz));
+    // std::cout << __FILE__ << ":" << __LINE__ << std::endl;
+    // std::cout << I << std::endl;
+    // exit(0);
     return I;
 }
 double Laser::GouyPhase(double r, double z) const {
@@ -33,7 +38,8 @@ double Laser::FocalPhase(double r, double z) const {
 }
 double Laser::Phase(double r, double z) const {
     double phase = 0;
-    if (_porras == -1) 
+    // phase = (2.*PI/_wavelength)*r*r/(2.*Curvature(z));
+    if (_porras == -1)   // not so good
         return phase;
     
     phase += GouyPhase(r, z);

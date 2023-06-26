@@ -17,13 +17,17 @@ std::vector<std::complex<double>> SpectrumMatrix::Lerp(double intensity) const {
             break;
     }
 
+    // std::cout << "intensity " << intensity << " [" << intensities[intensity_index + 1] << ", " << intensities[intensity_index] << "]\n";
+
     for (int i = 0; i < frequencies.size(); i++) {
-        std::complex<double> a = get(intensity_index+1, i);
-        std::complex<double> b = get(intensity_index, i);
+        std::complex<double> a = get(intensity_index+1, i);     // smaller one
+        std::complex<double> b = get(intensity_index, i);       // larger
 
         out_spectrum[i] = lerp( intensities[intensity_index + 1], intensities[intensity_index],
                                 a, b,
                                 intensity);
+
+        // out_spectrum[i] = splines[i](intensity, intensities);
     }
 
     return out_spectrum;
@@ -59,20 +63,22 @@ SpectrumMatrix SpectrumMatrix::Load(const std::string& filename) {
         }
     }
     Profile::Pop("load data");
+    for (auto& i : matrix.intensities)
+        i *= Wcm2ToAU;
     // ---------------------------------------------------------
-    // Profile::Push("generate splines");
-    // size_t num_freq = matrix.frequencies.size();
-    // matrix.splines.resize(num_freq);
-    // for (int i = 0; i < num_freq; i++) {
-    //     Profile::Push("generate spline");
-    //     matrix.splines[i].Initialize(
-    //         matrix.frequencies, 
-    //         {&matrix.data[i*num_freq], &matrix.data[(i+1)*num_freq]}
-    //     );
-    //     Profile::Pop("generate spline");
-    //     Profile::Print();
-    // }
-    // Profile::Pop("generate splines");
+    Profile::Push("generate splines");
+    size_t num_freq = matrix.frequencies.size();
+    size_t num_inten = matrix.intensities.size();
+    matrix.splines.resize(num_freq);
+    cvector temp(num_inten);
+    for (int i = 0; i < num_freq; i++) {
+        for (int j = 0; j < num_inten; j++)
+            temp[j] = matrix.get(j,i);
+
+        matrix.splines[i].Initialize(matrix.intensities, temp);
+    }
+    Profile::Pop("generate splines");
+    Profile::Print();
     return matrix;
 }
 
@@ -82,6 +88,9 @@ SpectrumMatrix SpectrumMatrix::Load(const std::string& filename) {
 
 const std::vector<double>& SpectrumMatrix::Frequencies() const {
     return frequencies;
+}
+const std::vector<double>& SpectrumMatrix::Intensities() const {
+    return intensities;
 }
 std::complex<double>& SpectrumMatrix::get(int i, int f) {
     return data[f + i * frequencies.size()];

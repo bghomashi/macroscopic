@@ -48,6 +48,7 @@ build
 
 # text files
 *.txt
+*.in
 
 # automake
 autom4te.cache/
