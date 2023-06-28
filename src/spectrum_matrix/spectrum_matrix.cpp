@@ -17,7 +17,7 @@ std::vector<std::complex<double>> SpectrumMatrix::Lerp(double intensity) const {
             break;
     }
 
-    // std::cout << "intensity " << intensity << " [" << intensities[intensity_index + 1] << ", " << intensities[intensity_index] << "]\n";
+    std::cout << "intensity " << intensity << " [" << intensities[intensity_index + 1] << ", " << intensities[intensity_index] << "]\n";
 
     for (int i = 0; i < frequencies.size(); i++) {
         std::complex<double> a = get(intensity_index+1, i);     // smaller one

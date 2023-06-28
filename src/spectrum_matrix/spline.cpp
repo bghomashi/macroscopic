@@ -101,35 +101,6 @@ namespace Spline {
             b(i) = a(i+1) - a(i);
         }
     }
-    static void LUDecompose(dmatrix& A) {
-        int i, j, k, imax; 
-        int N = A.rows;
-
-        for (i = 0; i < N; i++) {
-            for (j = i + 1; j < N; j++) {
-                A(j,i) /= A(i,i);
-
-                for (k = i + 1; k < N; k++)
-                    A(j,k) -= A(j,i) * A(i,k);
-            }
-        }
-    }
-    static void LUSolve(const dmatrix& A, const cvector& b, cvector& x) {
-        int N = A.rows;
-        for (int i = 0; i < N; i++) {
-            x(i) = b(i);
-
-            for (int k = 0; k < i; k++)
-                x(i) -= A(i,k) * x(k);
-        }
-
-        for (int i = N - 1; i >= 0; i--) {
-            for (int k = i + 1; k < N; k++)
-                x(i) -= A(i,k) * x(k);
-
-            x(i) /= A(i,i);
-        }
-    }
 
 
     static void Thomas(const dmatrix& A, const cvector& r, cvector& x) {
@@ -180,26 +151,23 @@ namespace Spline {
             yp(i) /= Dx(i);
 
         for(auto i = 1;i<n-3;++i) {
-            Tsp(i, i - 1) = Dx(i + 1);
-            Tsp(i, i) = 2 * (Dx(i) + Dx(i + 1));
-            Tsp(i, i + 1) = Dx(i);
+            Tsp(i, i - 1)   = 1./Dx(i + 1);
+            Tsp(i, i)       = 2. * (1./Dx(i) + 1./Dx(i + 1));
+            Tsp(i, i + 1)   = 1./Dx(i);
 
-            r(i) = 3. * (Dx(i + 1) * yp(i) + Dx(i) * yp(i + 1));
+            r(i) = 3. * (yp(i) / Dx(i + 1) + yp(i + 1) / Dx(i));
         }
 
         // not-a-knot computation of slopes
-        double q = Dx(0) * Dx(0) / Dx(1);
+        Tsp(0, 0) =  1./Dx(0) + Dx(0)/Dx(1)/Dx(1) + 2./Dx(1);
+        Tsp(0, 1) =  1./Dx(1) + Dx(0)/Dx(1)/Dx(1);
 
-        Tsp(0, 0) = 2 * Dx(0) + Dx(1) + q;
-        Tsp(0, 1) = Dx(0) + q;
+        Tsp(n - 3, n - 3) =  2./Dx(n-3) + Dx(n-2)/Dx(n-3)/Dx(n-3) + 1./Dx(n-2);
+        Tsp(n - 3, n - 4) = Dx(n-2) / Dx(n-3)/Dx(n-3) + 1./Dx(n-3);
 
+        r(0) = yp(0) / Dx(0) + 3. * yp(1) / Dx(1) + 2.*yp(1)*Dx(0)/Dx(1)/Dx(1);
+        r(n - 3) = yp(n-2) / Dx(n-2) + 3. * yp(n-3) / Dx(n-3) + 2.*yp(n-3)*Dx(n-2) / Dx(n-3) / Dx(n-3);
 
-        r(0) = Dx(1) * yp(0) + Dx(0) * yp(1) + 2. * yp(1) * (q + Dx(0));
-        q = Dx(n - 2) * Dx(n - 2) / Dx(n - 3);
-        r(n - 3) = Dx(n - 2) * yp(n - 3) + Dx(n - 3) * yp(n - 2) + 2. * yp(n - 3) * (Dx(n - 2) + q);
-
-        Tsp(n - 3, n - 3) = 2. * Dx(n - 2) + Dx(n - 3) + q;
-        Tsp(n - 3, n - 4) = Dx(n - 2) + q;	
 
         cvector stilde(n-2);
 
@@ -207,10 +175,10 @@ namespace Spline {
 
         // first and last slopes
         std::complex<double> s0 = -stilde(0) + 2.*yp(0);
-        s0 = s0 + ((Dx(0)* Dx(0))/ (Dx(1) * Dx(1))) * (stilde(0) + stilde(1) - 2. * yp(1));
+        s0 = 2.*yp(0) - stilde(0) + (Dx(0)*Dx(0)/Dx(1)/Dx(1)) * (stilde(0) + stilde(1)  - 2.*yp(1)); 
 
         std::complex<double> sn = -stilde(n - 3) + 2. * yp(n - 2);
-        sn = sn + ((Dx(n - 2) * Dx(n - 2)) / (Dx(n - 3) * Dx(n - 3))) * (stilde(n - 4) + stilde(n - 3) - 2. * yp(n - 3));
+        sn = 2. * yp(n - 2) - stilde(n - 3) + (Dx(n - 2) * Dx(n - 2) / Dx(n - 3) / Dx(n - 3)) * (stilde(n - 4) + stilde(n - 3) - 2. * yp(n - 3));
 
         cvector s(n);
         for (auto i = 1; i < n - 1; ++i)
@@ -225,7 +193,7 @@ namespace Spline {
         c = std::vector<std::complex<double>>(n - 1);
         d = std::vector<std::complex<double>>(n - 1);
         for (auto i = 0; i < c.size(); ++i) {
-            c[i] = (yp(i) - s(i)) / Dx(i);
+            c[i] = (yp(i) - s(i)) / Dx(i); // I can't remember why this is right
             d[i] = (s(i + 1) + s(i) - 2. * yp(i)) / (Dx(i) * Dx(i));
         }
     }
