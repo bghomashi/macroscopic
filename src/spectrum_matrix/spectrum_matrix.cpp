@@ -17,12 +17,11 @@ std::vector<std::complex<double>> SpectrumMatrix::Lerp(double intensity) const {
             break;
     }
 
-    std::cout << "intensity " << intensity << " [" << intensities[intensity_index + 1] << ", " << intensities[intensity_index] << "]\n";
-
     for (int i = 0; i < frequencies.size(); i++) {
         std::complex<double> a = get(intensity_index+1, i);     // smaller one
         std::complex<double> b = get(intensity_index, i);       // larger
 
+        // out_spectrum[i] = b;
         out_spectrum[i] = lerp( intensities[intensity_index + 1], intensities[intensity_index],
                                 a, b,
                                 intensity);
@@ -43,22 +42,20 @@ SpectrumMatrix SpectrumMatrix::Load(const std::string& filename) {
     // ---------------- first line in file contains frequencies
     std::getline(file, line);
     std::stringstream ss(line);
-    while (ss) {
-        matrix.frequencies.push_back(0);
-        ss >> matrix.frequencies.back();
+    double f;
+    while (ss >> f) {
+        matrix.frequencies.push_back(f);
     }
     // ---------------------------------------------------------
     // ---------------- now the first number contains the
     // ---------------- intensity and the rest is the HHG (complex)
     Profile::Push("load data");
-    while (file) {
-        std::getline(file, line);
+    while (std::getline(file, line)) {
         std::stringstream ss(line);
         matrix.intensities.push_back(0);
         ss >> matrix.intensities.back();
         double real, imag;
-        while (ss) {
-            ss >> real >> imag;
+        while (ss >> real >> imag) {
             matrix.data.push_back({ real, imag });
         }
     }
@@ -75,7 +72,7 @@ SpectrumMatrix SpectrumMatrix::Load(const std::string& filename) {
         for (int j = 0; j < num_inten; j++)
             temp[j] = matrix.get(j,i);
 
-        matrix.splines[i].Initialize(matrix.intensities, temp);
+        // matrix.splines[i].Initialize(matrix.intensities, temp);
     }
     Profile::Pop("generate splines");
     Profile::Print();

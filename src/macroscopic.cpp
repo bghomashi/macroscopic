@@ -78,5 +78,6 @@ cvector Macroscopic::MicroSpectrum(const point3& position) const {
     double r = sqrt(position.x*position.x + position.y*position.y);
     double z = position.z;
     double I = _laser.IntensityAt(r, z);
+
     return _microscopic_data.Lerp(I);
 }

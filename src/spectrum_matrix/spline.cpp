@@ -1,7 +1,7 @@
 
 #include "spline.h"
 #include <cassert>
-
+#include <iostream>
 
 namespace Spline {
     struct dmatrix {
@@ -142,9 +142,7 @@ namespace Spline {
         cvector r(n-2);     			// r-side
 
         dmatrix Tsp(n - 2, n - 2);			// sparse matrix
-        //Tsp.reserve(Eigen::VectorXi::Constant(n - 2, 3));		//three nonzero entries in each column
-
-
+        
         diff(x, Dx);
         diff(y, yp);
         for (int i = 0; i < yp.length(); ++i)
@@ -186,9 +184,9 @@ namespace Spline {
         s(0) = s0;
         s(n - 1) = sn;
 
-
         // vectors of coefficients a,b,c,d
         a = std::vector<std::complex<double>>(&y[0], &y[n - 1]);
+        
         b = std::vector<std::complex<double>>(&s(0), &s(n - 1));
         c = std::vector<std::complex<double>>(n - 1);
         d = std::vector<std::complex<double>>(n - 1);
@@ -196,6 +194,7 @@ namespace Spline {
             c[i] = (yp(i) - s(i)) / Dx(i); // I can't remember why this is right
             d[i] = (s(i + 1) + s(i) - 2. * yp(i)) / (Dx(i) * Dx(i));
         }
+        std::cout << __FILE__ << ":" << __LINE__ << std::endl;
     }
 
     std::complex<double> Cubic::operator ()(double x_s, const std::vector<double>& x) const {

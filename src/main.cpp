@@ -9,7 +9,7 @@ double beam_waist_um = 30;
 double peak_I0_wcm2 = 3.8e13;
 double gas_radius = 500;
 double gas_length = 6*beam_waist_um;
-size_t number_of_cells = 1e0;
+size_t number_of_cells = 1e4;
 double jetsig_um = 50;
 double density_cm3 = 1e18;
 std::string filename = "joel_hhg_vs_int.in";
@@ -35,11 +35,11 @@ int main() {
         Profile::Pop("Spectrum");
     }
 
-    std::ofstream file("joel_data_lerp_1e0.txt");
+    std::ofstream file("joel_data_lerp_1e4.txt");
     file << std::setprecision(8) << std::scientific;
-    for (int i = 0; i < detectors.size(); i++)
-        file << i << "\t";
-    file << "\n";
+    // for (int i = 0; i < detectors.size(); i++)
+    //     file << i << "\t";
+    // file << "\n";
 
     double max = 0;
     
@@ -52,7 +52,7 @@ int main() {
     for (int i = 0; i < H.size(); i++) {
         file << H[i] << "\t";
         for (int j = 0; j < detectors.size(); j++) {
-            file << abs(spectrums[j][i])*abs(spectrums[j][i]) << "\t";
+            file << std::real(spectrums[j][i]) << "\t" << std::imag(spectrums[j][i]) << "\t";
         }
         file << "\n";
     }

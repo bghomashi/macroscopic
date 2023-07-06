@@ -23,7 +23,7 @@ Laser::Laser(double peak_I0_wcm2, double waist_um, double wavelength_nm, double 
 }
 double Laser::IntensityAt(double r, double z) const {
     double wz = Radius(z);
-    double I = _peak_I0;// * (_waist/wz)*(_waist/wz) * exp(-2.*(r/wz)*(r/wz));
+    double I = _peak_I0 * (_waist/wz)*(_waist/wz) * exp(-2.*(r/wz)*(r/wz));
     // std::cout << __FILE__ << ":" << __LINE__ << std::endl;
     // std::cout << I << std::endl;
     // exit(0);
