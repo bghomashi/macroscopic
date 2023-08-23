@@ -38,7 +38,7 @@ double Laser::FocalPhase(double r, double z) const {
 }
 double Laser::Phase(double r, double z) const {
     double phase = 0;
-    // phase = (2.*PI/_wavelength)*r*r/(2.*Curvature(z));
+    return 0;
     if (_porras == -1)   // not so good
         return phase;
     

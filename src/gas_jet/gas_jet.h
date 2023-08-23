@@ -11,7 +11,8 @@ class CylindricalGasJet {
 
     std::random_device rd;
     std::mt19937 gen;
-    std::uniform_real_distribution<double> dis_xz;
+    // std::uniform_real_distribution<double> dis_xz;
+    std::normal_distribution<double> dis_xz;
     std::uniform_real_distribution<double> dis_y;
     std::uniform_real_distribution<double> dis_t;
 public:

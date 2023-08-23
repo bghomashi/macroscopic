@@ -4,6 +4,7 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <algorithm>
 
 #include "utility/profiler.h"
 
@@ -26,7 +27,7 @@ std::vector<std::complex<double>> SpectrumMatrix::Lerp(double intensity) const {
                                 a, b,
                                 intensity);
 
-        // out_spectrum[i] = splines[i](intensity, intensities);
+        out_spectrum[i] = splines[i](intensity, intensities);
     }
 
     return out_spectrum;
@@ -67,12 +68,15 @@ SpectrumMatrix SpectrumMatrix::Load(const std::string& filename) {
     size_t num_freq = matrix.frequencies.size();
     size_t num_inten = matrix.intensities.size();
     matrix.splines.resize(num_freq);
-    cvector temp(num_inten);
+    cvector temp_freq(num_inten);
+    dvector temp_int = matrix.intensities;
+    std::reverse(temp_int.begin(), temp_int.end());
     for (int i = 0; i < num_freq; i++) {
         for (int j = 0; j < num_inten; j++)
-            temp[j] = matrix.get(j,i);
+            temp_freq[j] = matrix.get(j,i);
 
-        // matrix.splines[i].Initialize(matrix.intensities, temp);
+        std::reverse(temp_freq.begin(), temp_freq.end());
+        matrix.splines[i].Initialize(temp_int, temp_freq);
     }
     Profile::Pop("generate splines");
     Profile::Print();

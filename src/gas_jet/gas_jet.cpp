@@ -4,7 +4,7 @@
 
 CylindricalGasJet::CylindricalGasJet() : gen(rd()), dis_xz(0., 1.), dis_y(-_length/2., _length/2.), dis_t(0., 2.*PI), _density(0), _sigma(0) {}
 CylindricalGasJet::CylindricalGasJet(double density, double sigma, double radius, double length, size_t n) : 
-_n(n), _length(length), _radius(radius), _sigma(sigma), _density(density) {
+_n(n), _length(length), _radius(radius), _sigma(sigma), _density(density),  gen(rd()), dis_xz(0., _sigma), dis_y(-_length/2., _length/2.), dis_t(0., 2.*PI) {
 }
 
 
@@ -22,12 +22,14 @@ void CylindricalGasJet::SampleCylinder(Laser& laser) {
         _cells.push_back({x, y, z, d, I, P});
     } else {
         for (int i = 0; i < _n;) {
-            double R = _radius*sqrt(dis_xz(gen)); //gives uniform samplying of the circular cross section
+            // double R = _radius*sqrt(dis_xz(gen)); //gives uniform samplying of the circular cross section
             double t = dis_t(gen);
-            double z = R*cos(t);
-            double x = R*sin(t);
+            // double z = R*cos(t);
+            // double x = R*sin(t);
+            double z = dis_xz(gen);
+            double x = dis_xz(gen);
             double y = dis_y(gen);
-            double d = 1;//_density*exp(-0.5*R*R/_sigma/_sigma);
+            double d = 1; //_density*exp(-0.5*R*R/_sigma/_sigma);
             double I = laser.IntensityAt(sqrt(x*x + y*y), z);
             double P = laser.Phase(sqrt(x*x + y*y), z);
 

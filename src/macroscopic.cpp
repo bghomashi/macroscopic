@@ -36,7 +36,7 @@ complex Macroscopic::E( const point3& rj,                           // dipole po
     double phase = _laser.Phase(rho_j, rj.z);
 
 
-    return aj * exp(-1.i * (w / C) * arg) * exp(1.i*n*phase);
+    return aj * exp(-1.i * (w / C) * arg) * exp(-1.i*n*phase);
 }
 
 
@@ -66,7 +66,6 @@ void Macroscopic::Initialize(
     for (auto& cell : _gas_jet._cells) {
         double las_r = sqrt(cell.pos.x*cell.pos.x + cell.pos.y*cell.pos.y);
         double las_z = cell.pos.z;
-        std::cout << cell.phase << std::endl;
     }
 
     ProfilerPop();
