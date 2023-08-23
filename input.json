@@ -1,0 +1,9 @@
+{
+    "number" : 1.0,
+    "class": {
+        "field" : "string",
+        "array" : [
+            1.0, 1.0, 1.0
+        ] 
+    }
+}

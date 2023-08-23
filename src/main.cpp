@@ -4,6 +4,8 @@
 #include "macroscopic.h"
 #include "utility/profiler.h"
 
+#include "utility/json.hpp"
+
 double peak_I0_wcm2 = 3.8e14;
 double wavelength_nm = 800;
 double beam_waist_um = 30;
@@ -17,6 +19,20 @@ std::vector<std::pair<double, double>> detectors = {{0,0}};
 std::vector<cvector> spectrums(detectors.size());
 
 int main() {
+    // HOW TO READ JSON
+    nlohmann::json input;                           // create json-object
+    std::ifstream in_file_stream("input.json");     // open the (text) file
+    in_file_stream >> input;                        // read the file into (>>) the json-object
+
+    // HOW TO USE JSON
+    std::cout << input["number"] << std::endl;
+    std::cout << input["class"]["field"] << std::endl;
+    std::cout << input["class"]["array"][0] << " " << input["class"]["array"][1] << " "<< input["class"]["array"][2] << std::endl;
+    // One should usually force the type (c++ is strongly typed after all).
+    input["number"].get<double>();
+    input["class"]["field"].get<std::string>();
+
+exit(0);
     Macroscopic macroscopic;
     macroscopic.Initialize(
         wavelength_nm, beam_waist_um, peak_I0_wcm2, 

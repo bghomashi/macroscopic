@@ -90,6 +90,8 @@
         "xhash": "cpp",
         "xlocbuf": "cpp",
         "xlocmes": "cpp",
-        "xtree": "cpp"
+        "xtree": "cpp",
+        "any": "cpp",
+        "filesystem": "cpp"
     }
 }
