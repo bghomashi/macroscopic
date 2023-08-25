@@ -21,7 +21,9 @@ Laser::Laser(double peak_I0_wcm2, double waist_um, double wavelength_nm, double 
     _waist = umToAU * _waist_um;
     _rayleigh = PI*_waist*_waist / _wavelength;
 }
-double Laser::IntensityAt(double r, double z) const {
+double Laser::IntensityAt(point3 pos) const {
+    double r = sqrt(pos.x*pos.x + pos.y*pos.y);
+    double z = pos.z;
     double wz = Radius(z);
     double I = _peak_I0 * (_waist/wz)*(_waist/wz) * exp(-2.*(r/wz)*(r/wz));
     // std::cout << __FILE__ << ":" << __LINE__ << std::endl;
@@ -29,24 +31,30 @@ double Laser::IntensityAt(double r, double z) const {
     // exit(0);
     return I;
 }
-double Laser::GouyPhase(double r, double z) const {
+double Laser::GouyPhase(point3 pos) const {
+    double r = sqrt(pos.x*pos.x + pos.y*pos.y);
+    double z = pos.z;
     return -atan2(z, _rayleigh);
 }
-double Laser::FocalPhase(double r, double z) const {
+double Laser::FocalPhase(point3 pos) const {
     // g0 * [1 + (r/w(z))^2] / (z/z0 + z0/z)
+    double r = sqrt(pos.x*pos.x + pos.y*pos.y);
+    double z = pos.z;
     return _porras * (1 - 2*(r*r/Radius(z)/Radius(z))) / (Curvature(z) / _rayleigh);
 }
-double Laser::Phase(double r, double z) const {
+double Laser::Phase(point3 pos) const {
     double phase = 0;
+    double r = sqrt(pos.x*pos.x + pos.y*pos.y);
+    double z = pos.z;
     return 0;
     if (_porras == -1)   // not so good
         return phase;
     
-    phase += GouyPhase(r, z);
+    phase += GouyPhase(pos);
     if (_porras == 0) 
         return phase;
 
-    return phase + FocalPhase(r, z);
+    return phase + FocalPhase(pos);
 }
 
 double Laser::PeakI0() const {

@@ -9,10 +9,10 @@ public:
     Laser(double peak_I0_wcm2, double waist_um, double wavelength_nm);
     Laser(double peak_I0_wcm2, double waist_um, double wavelength_nm, double porras);
     
-    double IntensityAt(double r, double z) const;
-    double GouyPhase(double r, double z) const;
-    double FocalPhase(double r, double z) const;
-    double Phase(double r, double z) const;
+    double IntensityAt(point3 pos) const;
+    double GouyPhase(point3 pos) const;
+    double FocalPhase(point3 pos) const;
+    double Phase(point3 pos) const;
 
     double PeakI0() const;                  // in atomic units
     double Waist() const;                   // in atomic units

@@ -4,6 +4,7 @@
 #include <cassert>
 #include <vector>
 
+
 using namespace std::complex_literals;          // enables 'i' in complex literals: complex x = 2.5i;
 
 typedef std::complex<double> complex;
