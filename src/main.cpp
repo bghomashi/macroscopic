@@ -6,6 +6,7 @@
 
 #include "utility/json.hpp"
 
+
 double peak_I0_wcm2 = 3.8e14;
 double wavelength_nm = 800;
 double beam_waist_um = 30;
@@ -15,7 +16,7 @@ size_t number_of_cells = 1e5;
 double jetsig_um = 800;
 double density_cm3 = 1;
 std::string filename = "he_hhg_vs_int.in";
-std::vector<std::pair<double, double>> detectors = {{0,0}};
+std::vector<std::pair<double, double>> detectors;
 std::vector<cvector> spectrums(detectors.size());
 
 int main() {
@@ -24,20 +25,114 @@ int main() {
     std::ifstream in_file_stream("input.json");     // open the (text) file
     in_file_stream >> input;                        // read the file into (>>) the json-object
 
-    // HOW TO USE JSON
-    std::cout << input["number"] << std::endl;
-    std::cout << input["class"]["field"] << std::endl;
-    std::cout << input["class"]["array"][0] << " " << input["class"]["array"][1] << " "<< input["class"]["array"][2] << std::endl;
-    // One should usually force the type (c++ is strongly typed after all).
-    input["number"].get<double>();
-    input["class"]["field"].get<std::string>();
 
-exit(0);
     Macroscopic macroscopic;
+    
+    
+    points _points;
+    //set up points
+    if (input["samples"]["custom"] == "" && input["samples"]["preset"] == "") {
+        std::cout << "No sample specified" << std::endl;
+        exit(1);
+    }
+    if (input["samples"]["custom"] != "") {
+        //still need to impliment how to read in custom points
+    }
+    else if (input["sample"]["preset"] == "cylindrical_gas_jet")
+    {
+        _points.CylindricalGasJet(
+            input["samples"]["cylindrical_gas_jet"]["density_cm3"],
+            input["samples"]["cylindrical_gas_jet"]["sigma_um"],
+            input["samples"]["cylindrical_gas_jet"]["radius_um"],
+            input["samples"]["cylindrical_gas_jet"]["length_um"],
+            input["samples"]["cylindrical_gas_jet"]["number"]
+        );
+        _points.cutoff = input["samples"]["cylindrical_gas_jet"]["cutoff"];
+    }
+    else if (input["samples"]["preset"] == "line")
+    {
+        //need to impliment
+    }
+    else if (input["samples"]["preset"] == "square_lattice")
+    {
+        //need to impliment
+    }
+    else if (input["samples"]["preset"] == "cube_lattice")
+    {
+        //need to impliment
+    }
+    else 
+    {
+        std::cout << "Invalid sample preset" << std::endl;
+        exit(1);
+    }
+    double x_shift = input["samples"]["shift"]["x_um"];
+    double y_shift = input["samples"]["shift"]["y_um"];
+    double z_shift = input["samples"]["shift"]["z_um"];
+    //shift all the points  by the specified amount
+    for (int i = 0; i < _points._cells.size(); i++) {
+        _points._cells[i].pos.x += x_shift;
+        _points._cells[i].pos.y += y_shift;
+        _points._cells[i].pos.z += z_shift;
+    }
+
+
+    //set up laser
+    Laser _laser(
+        input["laser"]["wavelength_nm"],
+        input["laser"]["beam_waist_um"],
+        input["laser"]["peak_I0_wcm2"],
+        input["laser"]["porras"]
+    );
+    
+
+    //set up spectrum
+    filename = input["spectrum"]["filename"];
+
+    //set up detectors
+    if(input["detector"]["preset"] == "on_axis")
+    {
+        detectors.push_back({0, 0});
+    }
+    else if(input["detector"]["preset"] == "point")
+    {
+        detectors.push_back({input["detector"]["point"]["theta_pi"], input["detector"]["point"]["phi_pi"]});
+    }
+    else if(input["detector"]["preset"] == "custom")
+    {
+        //need to impliment
+    }
+    else if(input["detector"]["preset"] == "circular")
+    {
+        //need to impliment
+    }
+    else if(input["detector"]["preset"] == "spherical")
+    {
+        //need to impliment
+    }
+    else if(input["detector"]["preset"] == "linear")
+    {
+        //need to impliment
+    }
+    else if(input["detector"]["preset"] == "cartesian")
+    {
+        //need to impliment
+    }
+    else
+    {
+        std::cout << "Invalid detector preset" << std::endl;
+        exit(1);
+    } 
+
+    //outputfile 
+    std::string outputfile = input["output"];
+    std::ofstream file(outputfile);
+    file << std::setprecision(8) << std::scientific;
+    file << "H\t" <<  "theta\t" << "phi\t" << "real\t" << "imag\t" << "\n";
+
     macroscopic.Initialize(
-        wavelength_nm, beam_waist_um, peak_I0_wcm2, 
-        gas_radius, gas_length, number_of_cells,
-        jetsig_um, density_cm3,
+        _laser,
+        _points,
         filename
     );
     auto H = macroscopic.Frequencies();
@@ -47,31 +142,16 @@ exit(0);
         double pd = d.second;
 
         Profile::Push("Spectrum");
-        spectrums[i] = macroscopic.Spectrum(td, pd);
+        //output spectrum to out out file
+        auto spectrum = macroscopic.Spectrum(td, pd);
+        for (int i = 0; i < H.size(); i++) {
+            file << H[i] << "\t" << td << "\t" << pd << "\t" << std::real(spectrum[i]) << "\t" << std::imag(spectrum[i]) << "\n";
+        }
         Profile::Pop("Spectrum");
     }
 
-    std::ofstream file("he_data_lerp_1e4_splines.txt");
-    file << std::setprecision(8) << std::scientific;
-    // for (int i = 0; i < detectors.size(); i++)
-    //     file << i << "\t";
-    // file << "\n";
 
-    double max = 0;
-    
-    for (int i = 0; i < H.size(); i++) {
-        max = std::max(abs(spectrums[0][i]), max);
-    }
-    for (int i = 0; i < H.size(); i++) {
-        spectrums[0][i] /= max;
-    }
-    for (int i = 0; i < H.size(); i++) {
-        file << H[i] << "\t";
-        for (int j = 0; j < detectors.size(); j++) {
-            file << std::real(spectrums[j][i]) << "\t" << std::imag(spectrums[j][i]) << "\t";
-        }
-        file << "\n";
-    }
+
 
 
     Profile::Print();

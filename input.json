@@ -1,9 +1,102 @@
 {
-    "number" : 1.0,
-    "class": {
-        "field" : "string",
-        "array" : [
-            1.0, 1.0, 1.0
-        ] 
-    }
+    "samples" : {
+        "cylindrical_gas_jet" : {
+            "density_cm3" : 1.0,
+            "radius_um" : 1.0,
+            "length_um" : 1.0,
+            "sigma_um"  : 1.0,
+            "number" : 100 
+        },
+        "line" : {
+            "spacing_um" : 1.0,
+            "number" : 100
+        },
+        "square_lattice" : {
+            "x_spacing_um" : 1.0,
+            "y_spacing_um" : 1.0,
+            "x_layers" : 10,
+            "y_layers" : 10
+        },
+        "cube_lattice" : {
+            "x_spacing_um" : 1.0,
+            "y_spacing_um" : 1.0,
+            "z_spacing_um" : 1.0,
+            "x_layers" : 10,
+            "y_layers" : 10,
+            "z_layers" : 10
+        },
+
+        "preset" : "cylindrical_gas_jet", 
+        "custom" : "",
+
+        "shift" : {
+            "x_um" : 0.0,
+            "y_um" : 0.0,
+            "z_um" : 0.0
+        }
+    },
+
+    "laser" : {
+        "wavelength_nm" : 800,
+        "peak_I0_wcm2" : 1e18,
+        "waist_um" : 30,
+        "porras" : 0,
+
+        "preset" : "gaussian",
+        "custom" : ""
+    },
+
+    "spectrum" : {
+        "filename" : "spectrum.txt"
+    },
+
+    "detector" : 
+    {
+        "point" : {
+            "theta_pi" : 0.5,
+            "phi_pi" : 0.5
+        },
+        "circular" : {
+            "plane" : "xy",
+            "num_points" : 100
+        },
+        "spherical"  : {
+            "theta_min_pi" : 0.0,
+            "theta_max_pi" : 1.0,
+            "phi_min_pi" : 0.0,
+            "phi_max_pi" : 1.0,
+            "num_theta " : 100,
+            "num_phi" : 100
+        }, 
+        "linear" : {
+            "plane" : "xy",
+            "num_points" : 100
+        },
+        "cartesian" : {
+            "x_min" : -1,
+            "x_max" : 1,
+            "y_min" : -1,
+            "y_max" : 1,
+            "num_x" : 100,
+            "num_y" : 100
+        },
+
+        "preset" : "on_axis",
+        "custom" : ""
+        
+    },
+
+    "frequency" : {
+        "min" : 7,
+        "max" : 7
+    },
+
+    "output_file" : "output.txt"
+
+
+
+    
+
+    
+
 }
