@@ -3,7 +3,6 @@
 #include <iomanip>
 #include "macroscopic.h"
 #include "utility/profiler.h"
-
 #include "utility/json.hpp"
 
 
@@ -125,23 +124,59 @@ int main() {
     } 
 
     //outputfile 
-    std::string outputfile = input["output"];
-    std::ofstream file(outputfile);
-    file << std::setprecision(8) << std::scientific;
-    file << "H\t" <<  "theta\t" << "phi\t" << "real\t" << "imag\t" << "\n";
+    std::string outputfolder = input["output"];
+    //make directory labeled outputfile
+    std::string command = "mkdir " + outputfolder;
+    system(command.c_str());
+
 
     macroscopic.Initialize(
         _laser,
         _points,
         filename
     );
+
+    //make three files in the folder, detectors, frequencies, and spectrum
+    //load detectors
+    std::string outputfile = outputfolder + "/detectors.txt";
+    std::ofstream file(outputfile);
+    for (int i = 0; i < detectors.size(); i++) {
+        auto& d = detectors[i];
+        double td = d.first;
+        double pd = d.second;
+        file << td << "\t" << pd << "\n";
+    }
+    //load frequencies
+    outputfile = outputfolder + "/frequencies.txt";
+    file(outputfile);
+    file << std::setprecision(8) << std::scientific;
     auto H = macroscopic.Frequencies();
+    for (int i = 0; i < H.size(); i++) {
+        file << H[i] << "\n";
+    }
+    //load spectrum
+    outputfile = outputfolder + "/spectrum.txt";
+    file(outputfile);
+    file << std::setprecision(8) << std::scientific;
+    for (int i = 0; i < detectors.size(); i++) {
+        auto& d = detectors[i];
+        double td = d.first;
+        double pd = d.second;
+        Profile::Push("Spectrum");
+        auto spectrum = macroscopic.Spectrum(td, pd);
+        for (int i = 0; i < H.size(); i++) {
+            file << std::real(spectrum[i]) << "\t" << std::imag(spectrum[i]) << "\n";
+        }
+        Profile::Pop("Spectrum");
+    }
+
+
     for (int i = 0; i < detectors.size(); i++) {
         auto& d = detectors[i];
         double td = d.first;
         double pd = d.second;
 
-        Profile::Push("Spectrum");
+
         //output spectrum to out out file
         auto spectrum = macroscopic.Spectrum(td, pd);
         for (int i = 0; i < H.size(); i++) {
