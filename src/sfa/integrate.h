@@ -35,7 +35,6 @@ T Trapz(double xmin, double xmax, int nx, std::function<T(double)> f) {
 }
 
 // ---------------2d definite intregator using trapezoidal rule -------------------------------/
-//f a two dimensional array
 template <typename T>
 T Trapz2D(const std::vector<double>& xs, const std::vector<double>& ys, const std::vector<std::vector<T>>& f) {
     T sum = 0;
@@ -79,33 +78,40 @@ T Trapz2D(double xmin, double xmax, int nx, double ymin, double ymax, int ny, st
 
 //1d indefinite integrator using trapezoidal rule, sum is stored at each step
 template <typename T>
-vector<T> TrapzInd(const std::vector<double>& xs, const std::vector<T>& f, std::vector<T>& f) {
-    vector<T> sum;
+std::vector<T> TrapzInd(const std::vector<double>& xs, const std::vector<T>& f) {
+    std::vector<T> sum;
     sum.push_back(0);
     for (int i = 1; i < xs.size(); i++) {
         sum.push_back(sum[i - 1] + 0.5 * (f[i] + f[i - 1]) * (xs[i] - xs[i - 1]));
     }
+    return sum;
 }
 
 template <typename T>
-vector<T> TrapzInd(const std::vector<double>& xs, std::function<T(double)> f) {
-    vector<T> sum;
+std::vector<T> TrapzInd(const std::vector<double>& xs, std::function<T(double)> f) {
+    std::vector<T> sum;
     sum.push_back(0);
     for (int i = 1; i < xs.size(); i++) {
         sum.push_back(sum[i - 1] + 0.5 * (f(xs[i]) + f(xs[i - 1])) * (xs[i] - xs[i - 1]));
     }
+    return sum;
 }
 
 template <typename T>
-vector<T> TrapzInd(double xmin, double xmax, int nx, std::function<T(double)> f) {
+std::vector<T> TrapzInd(double xmin, double xmax, int nx, std::function<T(double)> f) {
     double dx = (xmax - xmin) / (nx - 1);
-    vector<T> sum;
+    std::vector<T> sum;
     sum.push_back(0);
     for (int i = 1; i < nx; i++) {
         double x = xmin + dx * i;
         sum.push_back(sum[i - 1] + 0.5 * (f(x) + f(x - dx)) * dx);
     }
+    return sum;
 }
+
+
+
+
 
 
 

@@ -10,37 +10,47 @@ typedef std::complex<double> complex;
 
 struct Pulse {
     typedef std::shared_ptr<Pulse> Ptr_t;
-    virtual double A(double t) const = 0;
-    virtual double E(double t) const = 0;
-    virtual double alpha(double t) const = 0;
-    virtual double beta(double t) const = 0;
+    virtual point3 A(double t) const = 0;
+    virtual point3 E(double t) const = 0;
     
     bool Store(const std::string& filename, const std::vector<double>& time) const;
-    bool StoreA(const std::string& filename, const std::vector<double>& times) const;
-    bool StoreAA(const std::string& filename, const std::vector<double>& times) const;
 };
 
 struct SFA {
     double Ip;
 
-    Pulse::Ptr_t pulse;
+    std::vector<Pulse::Ptr_t> pulse;
+    std::vector<point3> Atot;
+    std::vector<point3> integralA;
+    std::vector<point3> integralAsq;
+    std::vector<point3> Etot; 
     std::function<complex(double)> dtm;
+    std::function<complex(double, double)> dtm2d;
 
-    std::vector<double> trs, tis, ps;
+    std::vector<double> ts, psx, psy, psz;
     std::vector<double> frequencies;
     std::vector<complex> dipole;
+    std::vector<std::vector<complex>> dipole2d;
     std::vector<complex> hhg;
 
 
-    void SetupIonizationTimeIntegrationVariables(double dt, double tmax);
-    void SetupRecombinationTimeIntegrationVariables(double dt, double tmax);
+
+    void SetupTimeIntegrationVariables(double dt, double tmax);
     void SetupMomentumIntegrationVariables(double dp, double pmax, double pmin);
+    void SetupMomentumIntegrationVariables(double dpx, double dpy, double pxmax, double pymax);
+    void SetupField();
     void SetupFrequencyVariables(double df, double pmax, double pmin);
 
-    double Action(double p, double t) const;
-    void Execute();
+    double Action(double px, double py, double pz, int timstep) const;
+    double Action(double px, double py, int timestep) const;
+    double Action(double px, int timestep) const;
+    void Execute1d();
+    void Execute2d();
 
     void ComputeHHG();
+    void StoreField(const std::string& filename);
     void ComputeMomentumTimeDistribution(const std::string& filename);
     void ComputeMomentumFreqDistribution(const std::string& filename);
+
+
 };

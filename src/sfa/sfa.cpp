@@ -15,23 +15,28 @@ std::vector<double> blackman(int N) {
     return w;
 }
 
-void SFA::SetupIonizationTimeIntegrationVariables(double dt, double tmax) {
+void SFA::SetupTimeIntegrationVariables(double dt, double tmax) {
     int nt = tmax / dt + 1;
-    tis.resize(nt);
+    ts.resize(nt);
     for (int i = 0; i < nt; i++)
-        tis[i] = i*dt;
-}
-void SFA::SetupRecombinationTimeIntegrationVariables(double dt, double tmax) {
-    int nt = tmax / dt + 1;
-    trs.resize(nt);
-    for (int i = 0; i < nt; i++)
-        trs[i] = i*dt;
+        ts[i] = i*dt;
 }
 void SFA::SetupMomentumIntegrationVariables(double dp, double pmax, double pmin) {
     int np = (pmax - pmin) / dp + 1;
-    ps.resize(np);
+    psx.resize(np);
     for (int i = 0; i < np; i++)
-        ps[i] = pmin + i*dp;
+        psx[i] = pmin + i*dp;
+}
+void SFA::SetupMomentumIntegrationVariables(double dpx, double dpy, double pxmax, double pymax){
+    int npx = (pxmax) / dpx + 1;
+    int npy = (pymax) / dpy + 1;
+    int np = npx * npy;
+    psx.resize(npx);
+    for (int i = 0; i < npx; i++)
+        psx[i] = i*dpx;
+    psy.resize(npy);
+    for (int i = 0; i < npy; i++)
+        psy[i] = i*dpy;
 }
 void SFA::SetupFrequencyVariables(double df, double fmax, double fmin) {
     int nf = (fmax - fmin) / df + 1;
@@ -39,155 +44,168 @@ void SFA::SetupFrequencyVariables(double df, double fmax, double fmin) {
     for (int i = 0; i < nf; i++)
         frequencies[i] = fmin + i*df;
 }
-double SFA::Action(double p, double t) const {
-    double H0 = 0.5 * p * p + Ip;
-    double pA = p * pulse->alpha(t);
-    double AA = 0.5 * pulse->beta(t);
-
-    return H0 * t + pA + AA;
-}
-void SFA::Execute() {
-    int64_t ntr = trs.size();
-    int64_t nti = tis.size();
-    int64_t np = ps.size();
+void SFA::SetupField() {
+    ///functions for computing integral of total field, and square of total field
+    std::function<double(double)> Axtot = [this](double t) {
+        double axtot = 0;
+        for (auto& p : pulse)
+            axtot += p->A(t).x;
+        return axtot;
+    };
+    std::function<double(double)> Asqxtot = [this](double t) {
+        double asqxtot = 0;
+        for (auto& p : pulse)
+            asqxtot += p->A(t).x * p->A(t).x;
+        return asqxtot;
+    };
+    std::function<double(double)> Aytot = [this](double t) {
+        double aytot = 0;
+        for (auto& p : pulse)
+            aytot += p->A(t).y;
+        return aytot;
+    };
+    std::function<double(double)> Asqytot = [this](double t) {
+        double asqytot = 0;
+        for (auto& p : pulse)
+            asqytot += p->A(t).y * p->A(t).y;
+        return asqytot;
+    };
+    std::function<double(double)> Aztot = [this](double t) {
+        double aztot = 0;
+        for (auto& p : pulse)
+            aztot += p->A(t).z;
+        return aztot;
+    };
+    std::function<double(double)> Asqztot = [this](double t) {
+        double asqztot = 0;
+        for (auto& p : pulse)
+            asqztot += p->A(t).z * p->A(t).z;
+        return asqztot;
+    };
+    integralA.resize(ts.size());
+    integralAsq.resize(ts.size());
     
-    this->dipole.resize(ntr, 0);
+    //produces time indexed vectors for integral of A and A^2
+    std::vector<double> integralAx = TrapzInd(ts, Aztot);
+    std::vector<double> integralAy = TrapzInd(ts, Aytot);
+    std::vector<double> integralAz = TrapzInd(ts, Aztot);
+    std::vector<double> integralAx2 = TrapzInd(ts, Asqxtot);
+    std::vector<double> integralAy2 = TrapzInd(ts, Asqytot);
+    std::vector<double> integralAz2 = TrapzInd(ts, Asqztot);
+    for (int i = 0; i < ts.size(); i++) {
+        integralA[i].x = integralAx[i];
+        integralA[i].y = integralAy[i];
+        integralA[i].z = integralAz[i];
+        integralAsq[i].x = integralAx2[i];
+        integralAsq[i].y = integralAy2[i];
+        integralAsq[i].z = integralAz2[i];
+    }
+    //produced time indexed vector for E and A
+    Etot.resize(ts.size(), {0, 0, 0});
+    Atot.resize(ts.size(), {0, 0, 0});
+    for (int i = 0; i < ts.size(); i++) {
+        for (auto& p : pulse)
+            Etot[i].x += p->E(ts[i]).x;
+            Etot[i].y += p->E(ts[i]).y;
+            Etot[i].z += p->E(ts[i]).z;
+            Atot[i].x += p->A(ts[i]).x;
+            Atot[i].y += p->A(ts[i]).y;
+            Atot[i].z += p->A(ts[i]).z;
+    }
+}
+double SFA::Action(double px, double py, double pz, int timstep) const {
+ ///action within time integral is integral[[p+A]^2, dt] + Ip*t
+    double t = ts[timstep];
+    double H0 = px*px + py*py + pz*pz + Ip;
+    double pA = 2*px*integralA[timstep].x + py*integralA[timstep].y + pz*integralA[timstep].z;
+    double AA = integralAsq[timstep].x + integralAsq[timstep].y + integralAsq[timstep].z;
+    return .5*(H0 * t + pA + AA);
 
-
-    // function to compute *ionization time* dependent integrand
-    auto Gamma = [this] (double p, double ti) {
-        return  exp(1i*Action(p, ti)) *
-                pulse->E(ti) *
-                dtm(p + pulse->A(ti));
+}
+double SFA::Action(double px, double py, int timestep) const
+{
+    double t = ts[timestep];
+    double H0 = px*px + py*py + Ip;
+    double pA = 2*px*integralA[timestep].x + py*integralA[timestep].y;
+    double AA = integralAsq[timestep].x + integralAsq[timestep].y;
+    return .5*(H0 * t + pA + AA);
+}
+double SFA::Action(double px, int timestep) const {
+    double t = ts[timestep];
+    double H0 = px*px + Ip;
+    double pA = 2*px*integralA[timestep].x;
+    double AA = integralAsq[timestep].x;
+    return .5*(H0 * t + pA + AA);
+}
+void SFA::Execute1d() {
+    
+    dipole.resize(ts.size(), 0);
+    std::function<complex(double,int)> timeIntegrand = [this](double p, int t){
+        return exp(1i*Action(p, t)) *  Etot[t].x * dtm(p + Atot[t].x);
     };
 
-    // returns the integral up to each time step for a given momentum p
-    auto compute = [this, Gamma] (double p) {
-        int ntr = trs.size();
-        int nti = tis.size();
-        std::vector<complex> GG(ntr);
-        int iti = 1;
-        GG[0] = 0;
-        for (int itr = 1; itr < ntr; itr++) {                           // for each recombination time, tr
-            double tr = trs[itr];                                       // this time
-            GG[itr] = GG[itr-1];                                        // start with previous value
-            for (; iti < nti && tis[iti] <= tr; iti++)                  // for each ionization time BEFORE tr
-                GG[itr] += 0.5 * (Gamma(p, tis[iti]) + Gamma(p, tis[iti-1]))*(tis[iti] - tis[iti-1]);   // trap
+    std::vector<complex> timeintegral;
+    std::vector<complex> momentumIntegrand;
+    momentumIntegrand.resize(psx.size(),0);
+    timeintegral.resize(psx.size(),0);
+
+    for (int i = 1; i < ts.size(); i++){
+        for (int j = 0; j < psx.size(); j++){
+            timeintegral[j] = timeintegral[j] + 0.5*(timeIntegrand(psx[j], i) + timeIntegrand(psx[j], i-1))*(ts[i] - ts[i-1]);
+            momentumIntegrand[j] = timeintegral[j] * exp(-1i*Action(psx[j], i)) * std::conj(dtm(psx[j] + Atot[i].x));
         }
-        return GG;
+        //calculate the integral over momentum at the time step
+        dipole[i] = Trapz(psx, momentumIntegrand);
+    }
+}
+
+void SFA::Execute2d() {
+    dipole2d.resize(ts.size(), std::vector<complex>(2, 0));
+    std::function<complex(double,double,int)> timeIntegrandx = [this](double px, double py, int t){
+        return exp(1i*Action(px, py, t)) *  Etot[t].x * dtm2d(px + Atot[t].x, py + Atot[t].y);
     };
-    
-    std::vector<complex> GG0(ntr), GG1(ntr);
-    GG0 = compute(ps[0]);
-    for (int ip = 1; ip < np; ip++) {
-        std::cout << "step: " << ip << "/" << np << std::flush;
+    std::function<complex(double, double, int)> timeIntegrandy = [this](double px, double py, int t){
+        return exp(1i*Action(px, py, t)) *  Etot[t].y * dtm2d(px + Atot[t].x, py + Atot[t].y);
+    };
 
-        double p0 = ps[ip - 1];
-        double p1 = ps[ip];
+    std::function<std::vector<complex>(double, double, int)> timeIntegrand = [this](double px, double py, int t){
+        std::vector<complex> timeIntegrand;
+        timeIntegrand.resize(2);
+        timeIntegrand[0] = exp(1i*Action(px, py, t)) *  Etot[t].x * dtm2d(px + Atot[t].x, py + Atot[t].y);
+        timeIntegrand[1] = exp(1i*Action(px, py, t)) *  Etot[t].y * dtm2d(px + Atot[t].x, py + Atot[t].y);
+        return timeIntegrand;
+    };
 
-        GG1 = compute(ps[ip]);
+    std::vector<std::vector<std::vector<complex>>> timeintegral;
+    std::vector<std::vector<std::vector<complex>>> momentumIntegrand; //data structure looks like f(x)(y)[0] is the x component and f(x)(y)[1] is the y component
+    momentumIntegrand.resize(psx.size(), std::vector<std::vector<complex>>(psy.size(), std::vector<complex>(2,0)));
+    timeintegral.resize(psx.size(), std::vector<std::vector<complex>>(psy.size(), std::vector<complex>(2,0)));
 
-        for (int it = 0; it < ntr; it++) {
-            double tr = trs[it];
-            complex W0 = 0;
-            complex W1 = 0;
-            W0 = std::conj(dtm(p0 + pulse->A(tr))) * exp(-1i*Action(p0, tr)) *  GG0[it];
-            W1 = std::conj(dtm(p1 + pulse->A(tr))) * exp(-1i*Action(p1, tr)) *  GG1[it];
-            
-            // if (p0 + pulse->A(tr) != 0)
-            //     W0 = std::conj(dtm(p0 + pulse->A(tr))) * exp(-1i*Action(p0, tr)) *  GG0[it] * (pulse->A(tr) / (p0 + pulse->A(tr)));
-            // if (p1 + pulse->A(tr) != 0)
-            //     W1 = std::conj(dtm(p1 + pulse->A(tr))) * exp(-1i*Action(p1, tr)) *  GG1[it] * (pulse->A(tr) / (p1 + pulse->A(tr)));
-            //complex W0 = std::conj(dtm(p0 + pulse->A(tr))); //* GG0[it];
-            //complex W1 = std::conj(dtm(p1 + pulse->A(tr))); //* GG1[it];
-            //complex W0 = std::conj(dtm(p0)) /* exp(-1i*Action(p0, tr))*/ *  GG0[it];
-            //complex W1 = std::conj(dtm(p1)) /* exp(-1i*Action(p1, tr))*/ *  GG1[it];
-            //complex W0 = GG0[it];
-            //complex W1 = GG1[it];
-
-            dipole[it] += 0.5*(W1 + W0)*(p1 - p0);
-
-            // displays progress count
-            if ((it == ntr / 3) || (it == 2 * ntr / 3) || (it == ntr -1))
-                std::cout << "." << std::flush;
+    for (int i = 1; i < ts.size(); i++){ //for each time
+        for(int j =0; j < psx.size(); j++){ //for each x momentum
+            for(int k = 0; k < psy.size(); k++){ //for each y momentum
+                for(int l =0; l < 2; l++) //for each component of the field
+                    //perform trapezoidal rule to get the next timestep
+                    timeintegral[j][k][l] = timeintegral[j][k][l] + 0.5*(timeIntegrand(psx[j], psy[k], i)[l] + timeIntegrand(psx[j], psy[k], i-1)[l])*(ts[i] - ts[i-1]);
+                    momentumIntegrand[j][k][l] = timeintegral[j][k][l] * exp(-1i*Action(psx[j], psy[k], i)) * std::conj(dtm2d(psx[j] + Atot[i].x, psy[k] + Atot[i].y));
+            }
         }
-        
-        std::swap(GG0, GG1);
-        
-        std::cout << "Complete." << std::endl;
+        for(int s = 0; s < 2; s++) //for each component of the field
+            //calculate the integral over momentum at the time step
+            dipole2d[i][s] = Trapz2D(psx, psy, momentumIntegrand[s]);
     }
-    for (int it = 0; it < ntr; it++) {
-        dipole[it] *= -1.i;
-    }
-    for (int it = 0; it < ntr; it++) {
-        dipole[it] += std::conj(dipole[it]);
-    }
+    
 }
-bool SFA::StoreDipole(const std::string& filename) const {
-    std::ofstream file(filename);
-    if (!file.is_open())
-        return false;
-
-    int nt = trs.size();
-    file << std::setprecision(8) << std::scientific;
-
-    for (int it = 0; it < nt; it++)
-        file << trs[it] << "\t" 
-             << std::real(dipole[it]) << "\t" 
-             << std::imag(dipole[it]) << std::endl;
-
-    return true;
-}
-bool SFA::StoreDipoleWindowed(const std::string& filename) const {
-    std::ofstream file(filename);
-    if (!file.is_open())
-        return false;
-
-    int nt = trs.size();
-    auto window = blackman(nt);
-    file << std::setprecision(8) << std::scientific;
-
-    for (int it = 0; it < nt; it++)
-        file << trs[it] << "\t" 
-             << std::real(window[it]*dipole[it]) << "\t" 
-             << std::imag(window[it]*dipole[it]) << std::endl;
-
-    return true;
-}
-
 void SFA::ComputeHHG() {
-    int nt = trs.size();
-    int nf = frequencies.size();
-    hhg.resize(nf);
-
-    auto window = blackman(nt);
-
-    for (int iff = 0; iff < nf; iff++) {
-        double f = frequencies[iff];
-        hhg[iff] = 0;
-        for (int it = 0; it < nt; it++) {
-            double t = trs[it];
-
-            hhg[iff] += exp(-1i*f*t) * dipole[it];
-        }
-        hhg[iff] *= -f*f;
-    }
+    
 }
-bool SFA::StoreHHG(const std::string& filename) const {
-    int nf = frequencies.size();
-    std::ofstream file(filename);
-    if (!file.is_open())
-        return false;
-    file << std::setprecision(8) << std::scientific;
 
-    for (int iff = 0; iff < nf; iff++) {
-        file << frequencies[iff] << "\t"
-             << std::real(hhg[iff]) << "\t"
-             << std::imag(hhg[iff]) << "\n";
 
-    }
-    return true;
-}
+
+
+
+
+
 
 
 bool Pulse::Store(const std::string& filename, const std::vector<double>& times) const {
@@ -198,222 +216,16 @@ bool Pulse::Store(const std::string& filename, const std::vector<double>& times)
 
     for (int i = 0; i < times.size(); i++) {
         file << times[i] << "\t"
-             << A(times[i]) << "\t"
-             << E(times[i]) << "\t"
-             << alpha(times[i]) << "\t"
-             << beta(times[i]) << "\n";
+             << A(times[i]).x << "\t"
+             << A(times[i]).y << "\t"
+             << A(times[i]).z << "\t"
+             << E(times[i]).x << "\t"
+             << E(times[i]).y << "\t"    
+             << E(times[i]).z << "\n";
     }
 
     return true;
 }
-bool Pulse::StoreA(const std::string& filename, const std::vector<double>& times) const {
-    std::vector<double> AA(times.size());
-    for (int it = 0; it < times.size(); it++) {
-        AA[it] = Trapz<double>(std::vector<double>(times.begin(), times.begin() + it), [this](double t){
-            return A(t);
-        });
-    }
-
-    std::ofstream file(filename);
-    if (!file.is_open())
-        return false;
-    file << std::setprecision(8) << std::scientific;
-
-    for (int i = 0; i < times.size(); i++) {
-        file << times[i] << "\t"
-             << AA[i] << "\n";
-    }
-
-    return true;
-}
-bool Pulse::StoreAA(const std::string& filename, const std::vector<double>& times) const {
-    std::vector<double> AA(times.size());
-    for (int it = 0; it < times.size(); it++) {
-        AA[it] = Trapz<double>(std::vector<double>(times.begin(), times.begin() + it), [this](double t){
-            return A(t)*A(t);
-        });
-    }
-
-    std::ofstream file(filename);
-    if (!file.is_open())
-        return false;
-    file << std::setprecision(8) << std::scientific;
-
-    for (int i = 0; i < times.size(); i++) {
-        file << times[i] << "\t"
-             << AA[i] << "\n";
-    }
-
-    return true;
-}
-bool SFA::StoreAction(const std::string& filename) const {
-    int64_t ntr = trs.size();
-    int64_t np = ps.size();
-    
-    std::ofstream file(filename);
-    if (!file.is_open())
-        return false;
-    file << std::setprecision(8) << std::scientific;
-
-
-    for (int i = 0; i < np; i++) {
-        for (int j = 0; j < ntr; j++) {
-            double S = Action(ps[i], trs[j]);
-            file << ps[i] << "\t"
-                 << trs[j] << "\t"
-                 << S << "\n";
-        }
-        file << "\n";
-    }
-
-    return false;
-}
-
-void SFA::ComputeMomentumTimeDistribution(const std::string& filename) {
-    int64_t ntr = trs.size();
-    int64_t nti = tis.size();
-    int64_t np = ps.size();
-    
-    std::vector<complex> mom(ntr*np, 0);
-
-    // function to compute *ionization time* dependent integrand
-    auto Gamma = [this] (double p, double ti) {
-        return  exp(1i*Action(p, ti))*
-                pulse->E(ti)*
-                dtm(p + pulse->A(ti));
-    };
-
-    // returns the integral up to each time step for a given momentum p
-    auto compute = [this, Gamma] (double p) {
-        int ntr = trs.size();
-        int nti = tis.size();
-        std::vector<complex> GG(ntr);
-        int iti = 1;
-        GG[0] = 0;
-        for (int itr = 1; itr < ntr; itr++) {                           // for each recombination time, tr
-            double tr = trs[itr];                                       // this time
-            GG[itr] = GG[itr-1];                                        // start with previous value
-            for (; iti < nti && tis[iti] <= tr; iti++)                  // for each ionization time BEFORE tr
-                GG[itr] += 0.5*(Gamma(p, tis[iti]) + Gamma(p, tis[iti-1]))*(tis[iti] - tis[iti-1]);   // trap
-        }
-        return GG;
-    };
-    
-    std::vector<complex> GG1(ntr);
-    for (int ip = 0; ip < np; ip++) {
-        std::cout << "step: " << ip << "/" << np << std::flush;
-
-        double p = ps[ip];
-
-        GG1 = compute(ps[ip]);
-
-        for (int it = 0; it < ntr; it++) {
-            double tr = trs[it];
-            complex W = std::conj(dtm(p + pulse->A(tr))) * exp(-1i*Action(p, tr)) *  GG1[it] / (p + pulse->A(tr));
-            mom[ip*ntr + it] = W;
-        }
-                
-        std::cout << "Complete." << std::endl;
-    }
 
 
 
-
-    std::ofstream file(filename);
-    file << std::setprecision(8) << std::scientific;
-
-    for (int i = 0; i < np; i++) {
-        for (int j = 0; j < ntr; j++) {
-            file << ps[i] /*- pulse->A(trs[j])*/ << "\t"
-                 << trs[j] << "\t"
-                 << std::real(mom[i*ntr + j]) << "\t"
-                 << std::imag(mom[i*ntr + j]) << "\n";
-        }
-        file << "\n";
-    }
-}
-void SFA::ComputeMomentumFreqDistribution(const std::string& filename) {
-    int64_t ntr = trs.size();
-    int64_t nti = tis.size();
-    int64_t np = ps.size();
-    int nf = frequencies.size();
-    
-    std::vector<complex> mom(ntr*np, 0);
-    std::vector<complex> mom_w(nf*np, 0);
-
-    // function to compute *ionization time* dependent integrand
-    auto Gamma = [this] (double p, double ti) {
-        return  exp(1i*Action(p, ti))*
-                pulse->E(ti)*
-                dtm(p + pulse->A(ti));
-    };
-
-    // returns the integral up to each time step for a given momentum p
-    auto compute = [this, Gamma] (double p) {
-        int ntr = trs.size();
-        int nti = tis.size();
-        std::vector<complex> GG(ntr);
-        int iti = 1;
-        GG[0] = 0;
-        for (int itr = 1; itr < ntr; itr++) {                           // for each recombination time, tr
-            double tr = trs[itr];                                       // this time
-            GG[itr] = GG[itr-1];                                        // start with previous value
-            for (; iti < nti && tis[iti] <= tr; iti++)                  // for each ionization time BEFORE tr
-                GG[itr] += 0.5*(Gamma(p, tis[iti]) + Gamma(p, tis[iti-1]))*(tis[iti] - tis[iti-1]);   // trap
-        }
-        return GG;
-    };
-    
-    std::vector<complex> GG1(ntr);
-    for (int ip = 0; ip < np; ip++) {
-        std::cout << "step: " << ip << "/" << np << std::flush;
-
-        double p = ps[ip];
-
-        GG1 = compute(ps[ip]);
-
-        for (int it = 0; it < ntr; it++) {
-            double tr = trs[it];
-            complex W = std::conj(dtm(p + pulse->A(tr))) * exp(-1i*Action(p, tr)) * GG1[it] / (p + pulse->A(tr));
-            mom[ip*ntr + it] = W;
-        }
-                
-        std::cout << "Complete." << std::endl;
-    }
-
-
-    auto window = blackman(ntr);
-
-    for (int iff = 0; iff < nf; iff++) {
-        double f = frequencies[iff];
-        for (int ip = 0; ip < np; ip++) {
-            double p = ps[ip];
-            mom_w[ip*nf + iff] = 0;
-            for (int it = 0; it < ntr; it++) {
-                double t = trs[it];
-                
-                if (p - pulse->A(t) < ps[0] || p - pulse->A(t) > ps.back())
-                    continue;
-
-                int index = std::upper_bound(ps.begin(), ps.end(), p - pulse->A(t)) - ps.begin();
-
-                mom_w[ip*nf + iff] += exp(-1i*f*t) * 2. * window[it] * mom[ip*ntr + it] * (trs[1] - trs[0]);
-            }
-        }
-    }
-
-
-
-    std::ofstream file(filename);
-    file << std::setprecision(8) << std::scientific;
-
-    for (int j = 0; j < nf; j++) {
-        for (int i = 0; i < np; i++) {
-            file << frequencies[j] << "\t"
-                 << ps[i] << "\t"
-                 << std::real(mom_w[i*nf + j]) << "\t"
-                 << std::imag(mom_w[i*nf + j]) << "\n";
-        }
-        file << "\n";
-    }
-}
