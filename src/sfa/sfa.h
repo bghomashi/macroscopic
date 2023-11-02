@@ -4,6 +4,7 @@
 #include <vector>
 #include <functional>
 #include <memory>
+#include "../maths/constants.h"
 
 using namespace std::complex_literals;
 typedef std::complex<double> complex;
@@ -47,10 +48,10 @@ struct SFA {
     void Execute1d();
     void Execute2d();
 
-    void ComputeHHG();
-    void StoreField(const std::string& filename);
-    void ComputeMomentumTimeDistribution(const std::string& filename);
-    void ComputeMomentumFreqDistribution(const std::string& filename);
-
+    void ComputeHHG1D();
+    bool StoreField(const std::string& filename);
+    bool StoreDipole(const std::string& filename);
+    bool StoreHHG1D(const std::string& filename);
+    
 
 };

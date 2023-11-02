@@ -5,6 +5,7 @@
 #include "../maths/constants.h"
 
 
+
 //-------------------1d definite integrator using trapezoidal rule -------------/
 
 template <typename T>
@@ -108,6 +109,86 @@ std::vector<T> TrapzInd(double xmin, double xmax, int nx, std::function<T(double
     }
     return sum;
 }
+
+//fourier transforms using trapezoidal rule
+/*
+template <typename T>
+std::vector<complex> FourierTransform(const std::vector<double>& xs, const std::vector<T>& f) {
+    std::vector<complex> transform;
+    transform.resize(xs.size());
+    for (int i = 0; i < xs.size(); i++) {
+        transform[i] = 0;
+        for (int j = 0; j < xs.size(); j++) {
+            transform[i] += f[j] * exp(-1i * xs[i] * xs[j]);
+        }
+    }
+    return transform;   
+}
+
+template <typename T>
+std::vector<complex> FourierTransform(const std::vector<double>& xs, std::function<T(double)> f) {
+    std::vector<complex> transform;
+    transform.resize(xs.size());
+    for (int i = 0; i < xs.size(); i++) {
+        transform[i] = 0;
+        for (int j = 0; j < xs.size(); j++) {
+            transform[i] += f(xs[j]) * exp(-1i * xs[i] * xs[j]);
+        }
+    }
+    return transform;   
+}
+
+template <typename T>
+std::vector<complex> FourierTransform(double xmin, double xmax, int nx, std::function<T(double)> f) {
+    double dx = (xmax - xmin) / (nx - 1);
+    std::vector<complex> transform;
+    transform.resize(nx);
+    for (int i = 0; i < nx; i++) {
+        transform[i] = 0;
+        for (int j = 0; j < nx; j++) {
+            double x = xmin + dx * j;
+            transform[i] += f(x) * exp(-1i * (xmin + dx * i) * x);
+        }
+    }
+    return transform;   
+}
+
+// 2d fourier transforms using 1d fourier transforms
+template <typename T>
+std::vector<std::vector<complex>> FourierTransform2D(const std::vector<double>& xs, const std::vector<double>& ys, const std::vector<std::vector<T>>& f) {
+    std::vector<std::vector<complex>> transform;
+    transform.resize(xs.size(), std::vector<complex>(ys.size()));
+    for (int ix=0; ix < xs.size(); ix++) {
+        transform[ix] = FourierTransform(ys, f[ix]);
+    }
+}
+
+template <typename T>
+std::vector<std::vector<complex>> FourierTransform2D(const std::vector<double>& xs, const std::vector<double>& ys, std::function<T(double, double)> f) {
+    std::vector<std::vector<complex>> transform;
+    transform.resize(xs.size(), std::vector<complex>(ys.size()));
+    for (int ix=0; ix < xs.size(); ix++) {
+        transform[ix] = FourierTransform(ys, [f, xs, ix](double y){return f(xs[ix], y);});
+    }
+}
+
+template <typename T>
+std::vector<std::vector<complex>> FourierTransform2D(double xmin, double xmax, int nx, double ymin, double ymax, int ny, std::function<T(double, double)> f) {
+    double dx = (xmax - xmin) / (nx - 1);
+    double dy = (ymax - ymin) / (ny - 1);
+    std::vector<std::vector<complex>> transform;
+    transform.resize(nx, std::vector<complex>(ny));
+    for (int ix=0; ix < nx; ix++) {
+        transform[ix] = FourierTransform(ymin, ymax, ny, [f, ix, dx, xmin](double y){return f(xmin + dx * ix, y);});
+    }
+}
+*/
+
+
+
+
+
+
 
 
 

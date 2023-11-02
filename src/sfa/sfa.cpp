@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <iomanip>
+#include <complex>
 
 std::vector<double> blackman(int N) {
     std::vector<double> w(N);
@@ -141,7 +142,7 @@ void SFA::Execute1d() {
     
     dipole.resize(ts.size(), 0);
     std::function<complex(double,int)> timeIntegrand = [this](double p, int t){
-        return exp(1i*Action(p, t)) *  Etot[t].x * dtm(p + Atot[t].x);
+        return exp(complex(1j)*complex(Action(p, t))) *  Etot[t].x * dtm(p + Atot[t].x);
     };
 
     std::vector<complex> timeintegral;
@@ -177,27 +178,55 @@ void SFA::Execute2d() {
     };
 
     std::vector<std::vector<std::vector<complex>>> timeintegral;
-    std::vector<std::vector<std::vector<complex>>> momentumIntegrand; //data structure looks like f(x)(y)[0] is the x component and f(x)(y)[1] is the y component
-    momentumIntegrand.resize(psx.size(), std::vector<std::vector<complex>>(psy.size(), std::vector<complex>(2,0)));
-    timeintegral.resize(psx.size(), std::vector<std::vector<complex>>(psy.size(), std::vector<complex>(2,0)));
+    std::vector<std::vector<std::vector<complex>>> momentumIntegrand; //data structure looks like f[0](x)(y) is the x component and f[1](x)(y) is the y component
+    momentumIntegrand.resize(2, std::vector<std::vector<complex>>(psx.size(), std::vector<complex>(psy.size(), 0)));
+    timeintegral.resize(2, std::vector<std::vector<complex>>(psx.size(), std::vector<complex>(psy.size(), 0)));
 
     for (int i = 1; i < ts.size(); i++){ //for each time
-        for(int j =0; j < psx.size(); j++){ //for each x momentum
-            for(int k = 0; k < psy.size(); k++){ //for each y momentum
-                for(int l =0; l < 2; l++) //for each component of the field
+        for(int j =0; j < 2; j++){ //for each component of the field
+            for(int k = 0; k < psx.size(); k++){ //for each x momentum
+                for(int l =0; l < psy.size(); l++){ //for each y momentum
                     //perform trapezoidal rule to get the next timestep
-                    timeintegral[j][k][l] = timeintegral[j][k][l] + 0.5*(timeIntegrand(psx[j], psy[k], i)[l] + timeIntegrand(psx[j], psy[k], i-1)[l])*(ts[i] - ts[i-1]);
-                    momentumIntegrand[j][k][l] = timeintegral[j][k][l] * exp(-1i*Action(psx[j], psy[k], i)) * std::conj(dtm2d(psx[j] + Atot[i].x, psy[k] + Atot[i].y));
+                    timeintegral[j][k][l] = timeintegral[j][k][l] + 0.5*(timeIntegrand(psx[k], psy[l], i)[j] + timeIntegrand(psx[k], psy[l], i-1)[j])*(ts[i] - ts[i-1]);
+                    momentumIntegrand[j][k][l] = timeintegral[j][k][l] * exp(-1i*Action(psx[k], psy[l], i)) * std::conj(dtm2d(psx[j] + Atot[i].x, psy[k] + Atot[i].y));
+                }
             }
         }
-        for(int s = 0; s < 2; s++) //for each component of the field
+        for(int j = 0; j < 2; j++) //for each component of the field
             //calculate the integral over momentum at the time step
-            dipole2d[i][s] = Trapz2D(psx, psy, momentumIntegrand[s]);
+            dipole2d[i][j] = Trapz2D(psx, psy, momentumIntegrand[j]);
     }
     
 }
-void SFA::ComputeHHG() {
-    
+void SFA::ComputeHHG1D() {
+    //window dipole in time domain
+    std::vector<double> window = blackman(dipole.size());
+    for (int i = 0; i < dipole.size(); i++) {
+        dipole[i] *= window[i];
+    }
+    //compute hhg
+    hhg.resize(frequencies.size(), 0);
+    for (int i = 0; i < frequencies.size(); i++) {
+        for (int j = 0; j < ts.size(); j++) {
+            hhg[i] += dipole[j] * exp(-1i * frequencies[i] * ts[j]);
+        }
+    } 
+}
+
+bool SFA::StoreHHG1D(const std::string& filename){
+    int nf = frequencies.size();
+    std::ofstream file(filename);
+    if (!file.is_open())
+        return false;
+    file << std::setprecision(8) << std::scientific;
+
+    for (int iff = 0; iff < nf; iff++) {
+        file << frequencies[iff] << "\t"
+             << std::real(hhg[iff]) << "\t"
+             << std::imag(hhg[iff]) << "\n";
+
+    }
+    return true;
 }
 
 
