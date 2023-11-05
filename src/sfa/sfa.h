@@ -4,6 +4,7 @@
 #include <vector>
 #include <functional>
 #include <memory>
+#include "maths.h"
 #include "../maths/constants.h"
 
 using namespace std::complex_literals;

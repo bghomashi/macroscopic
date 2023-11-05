@@ -20,7 +20,9 @@ double ffmin = 0.*w0, ffmax = 40.*w0;
 
 
 int main() {
+    
     SFA sfa;
+    
     sfa.Ip = 0.5;
     sfa.pulse.push_back(std::make_shared<Sin2Pulse>(CEP, w0, N, E0));
     
@@ -28,7 +30,7 @@ int main() {
         double K = sqrt(2.*sfa.Ip);
         return -2.i*sqrt(K)*p / (p*p + K*K) / (p*p + K*K);
     };
-
+    
     sfa.SetupTimeIntegrationVariables(dt, tmax);
     sfa.SetupMomentumIntegrationVariables(dp, pmax, pmin);
     sfa.SetupFrequencyVariables(dff, ffmax, ffmin);
@@ -41,13 +43,16 @@ int main() {
     
     // sfa.ComputeMomentumTimeDistribution("momentum.dat");
     // sfa.ComputeMomentumFreqDistribution("momentum_freq.dat");
+    sfa.SetupField();
     
     sfa.Execute1d();
-
+    
     //sfa.StoreDipole("dipole.out");
     // sfa.StoreDipoleWindowed("dipole_windowed.out");
 
     sfa.ComputeHHG1D();
     sfa.StoreHHG1D("hhg_At.out");
+
+    
     return 0;
 }

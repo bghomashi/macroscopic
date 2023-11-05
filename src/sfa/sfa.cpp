@@ -45,6 +45,7 @@ void SFA::SetupFrequencyVariables(double df, double fmax, double fmin) {
     for (int i = 0; i < nf; i++)
         frequencies[i] = fmin + i*df;
 }
+
 void SFA::SetupField() {
     ///functions for computing integral of total field, and square of total field
     std::function<double(double)> Axtot = [this](double t) {
@@ -100,20 +101,25 @@ void SFA::SetupField() {
         integralAsq[i].x = integralAx2[i];
         integralAsq[i].y = integralAy2[i];
         integralAsq[i].z = integralAz2[i];
-    }
+    } 
+    
     //produced time indexed vector for E and A
     Etot.resize(ts.size(), {0, 0, 0});
     Atot.resize(ts.size(), {0, 0, 0});
     for (int i = 0; i < ts.size(); i++) {
-        for (auto& p : pulse)
-            Etot[i].x += p->E(ts[i]).x;
-            Etot[i].y += p->E(ts[i]).y;
-            Etot[i].z += p->E(ts[i]).z;
-            Atot[i].x += p->A(ts[i]).x;
-            Atot[i].y += p->A(ts[i]).y;
-            Atot[i].z += p->A(ts[i]).z;
+        for (int j = 0; j < pulse.size(); j++){
+            Etot[i].x += pulse[j]->E(ts[i]).x;
+            Etot[i].y += pulse[j]->E(ts[i]).y;
+            Etot[i].z += pulse[j]->E(ts[i]).z;
+            Atot[i].x += pulse[j]->A(ts[i]).x;
+            Atot[i].y += pulse[j]->A(ts[i]).y;
+            Atot[i].z += pulse[j]->A(ts[i]).z;
+        }
     }
+    
+    
 }
+
 double SFA::Action(double px, double py, double pz, int timstep) const {
  ///action within time integral is integral[[p+A]^2, dt] + Ip*t
     double t = ts[timstep];
@@ -142,7 +148,7 @@ void SFA::Execute1d() {
     
     dipole.resize(ts.size(), 0);
     std::function<complex(double,int)> timeIntegrand = [this](double p, int t){
-        return exp(complex(1j)*complex(Action(p, t))) *  Etot[t].x * dtm(p + Atot[t].x);
+        return exp(1i*(Action(p, t))) *  Etot[t].x * dtm(p + Atot[t].x);
     };
 
     std::vector<complex> timeintegral;
@@ -200,10 +206,12 @@ void SFA::Execute2d() {
 }
 void SFA::ComputeHHG1D() {
     //window dipole in time domain
+    /*
     std::vector<double> window = blackman(dipole.size());
     for (int i = 0; i < dipole.size(); i++) {
         dipole[i] *= window[i];
     }
+    */
     //compute hhg
     hhg.resize(frequencies.size(), 0);
     for (int i = 0; i < frequencies.size(); i++) {
