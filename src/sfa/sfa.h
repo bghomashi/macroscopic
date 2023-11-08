@@ -40,8 +40,9 @@ struct SFA {
     void SetupTimeIntegrationVariables(double dt, double tmax);
     void SetupMomentumIntegrationVariables(double dp, double pmax, double pmin);
     void SetupMomentumIntegrationVariables(double dpx, double dpy, double pxmax, double pymax);
-    void SetupField();
     void SetupFrequencyVariables(double df, double pmax, double pmin);
+
+    void SetupField();
 
     double Action(double px, double py, double pz, int timstep) const;
     double Action(double px, double py, int timestep) const;

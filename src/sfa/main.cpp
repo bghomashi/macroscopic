@@ -52,6 +52,7 @@ int main() {
 
     sfa.ComputeHHG1D();
     sfa.StoreHHG1D("hhg_At.out");
+    sfa.StoreDipole("dipole.out");
 
     
     return 0;

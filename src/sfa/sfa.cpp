@@ -197,10 +197,9 @@ void SFA::Execute2d() {
                     momentumIntegrand[j][k][l] = timeintegral[j][k][l] * exp(-1i*Action(psx[k], psy[l], i)) * std::conj(dtm2d(psx[j] + Atot[i].x, psy[k] + Atot[i].y));
                 }
             }
-        }
-        for(int j = 0; j < 2; j++) //for each component of the field
             //calculate the integral over momentum at the time step
             dipole2d[i][j] = Trapz2D(psx, psy, momentumIntegrand[j]);
+        }
     }
     
 }
@@ -235,6 +234,20 @@ bool SFA::StoreHHG1D(const std::string& filename){
 
     }
     return true;
+}
+
+bool SFA::StoreDipole(const std::string& filename)
+{
+    std::ofstream file(filename);
+    if (!file.is_open())
+        return false;
+    file << std::setprecision(8) << std::scientific;
+
+    for(int i = 0; i < dipole.size(); i++){
+        file << ts[i] << "\t"
+             << std::real(dipole[i]) << "\t"
+             << std::imag(dipole[i]) << "\n";
+    }
 }
 
 
