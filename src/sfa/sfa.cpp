@@ -166,6 +166,42 @@ void SFA::Execute1d() {
     }
 }
 
+void SFA::SattlePoint1d()
+{
+    dipole.resize(ts.size(), 0);
+    std::function<complex(double,int)> timeIntegrand = [this](double p, int t){
+        return exp(1i*(Action(p, t))) *  Etot[t].x * dtm(p + Atot[t].x);
+    };
+    double psad; //saddle point momentum
+    complex timeintegral;
+
+    std::chrono::high_resolution_clock::time_point startTime = std::chrono::high_resolution_clock::now();
+
+    for(int i = 1; i < ts.size(); i++){
+        psad = integralA[i].x / ts[i]; //find the saddle point momentum for the time i
+        timeintegral = 0;
+        for(int j = 1; j < i; j++){
+            timeintegral += 0.5*(timeIntegrand(psad, j) + timeIntegrand(psad, j-1))*(ts[j] - ts[j-1]); // calculate the time integral up the time i
+        }
+        dipole[i] = timeintegral * exp(-1i*Action(psad, i)) * std::conj(dtm(psad + Atot[i].x)); //calculate the dipole at time i
+
+        /*-------------------for tracking progress of the calculation-------------------
+        std::chrono::high_resolution_clock::time_point endTime = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> timeSpan = std::chrono::duration_cast<std::chrono::duration<double>>(endTime - startTime);
+        double iterationsPerSecond = i / timeSpan.count();
+        double estimatedTime = (ts.size() - i) / iterationsPerSecond;
+        int minutes = estimatedTime / 60;
+        int hours = minutes / 60;
+        int estimatedTimeSeconds = (int)estimatedTime % 60;
+        int estimatedTimeMinutes = minutes % 60;
+        int estimatedTimeHours = hours;
+
+        std::cout << std::setprecision(2) << "its[" << i << " / " << ts.size() << "] its/s[" << iterationsPerSecond
+                  << "] remaining[" << estimatedTimeHours << "h " << estimatedTimeMinutes << "m " << estimatedTimeSeconds << "s]"  << "\r" << std::flush;*/
+    }
+    std::cout << std::endl;
+}
+
 void SFA::Execute2d() {
 
     

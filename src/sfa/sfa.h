@@ -49,6 +49,7 @@ struct SFA {
     double Action(double px, double py, int timestep) const;
     double Action(double px, int timestep) const;
     void Execute1d();
+    void SattlePoint1d();
     void Execute2d();
 
     void ComputeHHG1D();

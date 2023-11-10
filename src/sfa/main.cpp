@@ -11,9 +11,9 @@ double N = 10;
 double CEP = 0;
 
 // sfa params
-double dt = 0.1;
+double dt = 0.02;
 double tmax = (2*pi/w0) * N;
-double dp = 0.1;
+double dp = 0.01;
 double pmin = -3, pmax = 3;
 double dff = 0.01;
 double ffmin = 0.*w0, ffmax = 40.*w0;
@@ -40,27 +40,20 @@ int main() {
     sfa.SetupMomentumIntegrationVariables(dp, pmax, pmin);
     sfa.SetupFrequencyVariables(dff, ffmax, ffmin);
     sfa.SetupMomentumIntegrationVariables(dp, pmax, pmin, dp, pmax, pmin);
-
-    // sfa.StoreAction("action.dat");
-
-    // sfa.pulse->Store("pulse.dat", sfa.trs);
-    // sfa.pulse->StoreA("pulseA.dat", sfa.trs);
-    // sfa.pulse->StoreAA("pulseAA.dat", sfa.trs);
-    
-    // sfa.ComputeMomentumTimeDistribution("momentum.dat");
-    // sfa.ComputeMomentumFreqDistribution("momentum_freq.dat");
     sfa.SetupField();
     
-    //sfa.Execute1d();
-    std::cout << "Executing 2d..." << std::endl;
-    sfa.Execute2d();
 
-    //sfa.ComputeHHG1D();
-    //sfa.StoreHHG1D("hhg_At.out");
+    sfa.SattlePoint1d();
+    //sfa.Execute1d();
+    //std::cout << "Executing 2d..." << std::endl;
+    //sfa.Execute2d();
+
+    sfa.ComputeHHG1D();
+    sfa.StoreHHG1D("hhg_At.out");
     
-    sfa.StoreDipole2d("dipole.out");
-    sfa.ComputeHHG2D();
-    sfa.StoreHHG2D("hhg.out");
+    //sfa.StoreDipole2d("dipole.out");
+    //sfa.ComputeHHG2D();
+    //sfa.StoreHHG2D("hhg.out");
     std::cout << "Done." << std::endl;
     
     return 0;
