@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
+
 data = np.loadtxt('hhg_At.out')
 frequencies = data[:, 0]
 real_part = data[:, 1]
@@ -17,4 +18,5 @@ fig = plt.figure()
 plt.semilogy(frequencies, norm)
 plt.xlabel('Frequency')
 plt.ylabel('HHG')
+plt.set_xlim([0, 20])
 fig.savefig('hhg_At.png')

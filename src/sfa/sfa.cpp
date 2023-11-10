@@ -5,6 +5,7 @@
 #include <fstream>
 #include <iomanip>
 #include <complex>
+#include <chrono>
 
 std::vector<double> blackman(int N) {
     std::vector<double> w(N);
@@ -28,16 +29,15 @@ void SFA::SetupMomentumIntegrationVariables(double dp, double pmax, double pmin)
     for (int i = 0; i < np; i++)
         psx[i] = pmin + i*dp;
 }
-void SFA::SetupMomentumIntegrationVariables(double dpx, double dpy, double pxmax, double pymax){
-    int npx = (pxmax) / dpx + 1;
-    int npy = (pymax) / dpy + 1;
-    int np = npx * npy;
+void SFA::SetupMomentumIntegrationVariables(double dpx, double pxmax, double pxmin, double dpy, double pymax, double pymin) {
+    int npx = (pxmax - pxmin) / dpx + 1;
+    int npy = (pymax - pymin) / dpy + 1;
     psx.resize(npx);
-    for (int i = 0; i < npx; i++)
-        psx[i] = i*dpx;
     psy.resize(npy);
+    for (int i = 0; i < npx; i++)
+        psx[i] = pxmin + i*dpx;
     for (int i = 0; i < npy; i++)
-        psy[i] = i*dpy;
+        psy[i] = pymin + i*dpy;
 }
 void SFA::SetupFrequencyVariables(double df, double fmax, double fmin) {
     int nf = (fmax - fmin) / df + 1;
@@ -167,6 +167,8 @@ void SFA::Execute1d() {
 }
 
 void SFA::Execute2d() {
+
+    
     dipole2d.resize(ts.size(), std::vector<complex>(2, 0));
     std::function<complex(double,double,int)> timeIntegrandx = [this](double px, double py, int t){
         return exp(1i*Action(px, py, t)) *  Etot[t].x * dtm2d(px + Atot[t].x, py + Atot[t].y);
@@ -188,6 +190,8 @@ void SFA::Execute2d() {
     momentumIntegrand.resize(2, std::vector<std::vector<complex>>(psx.size(), std::vector<complex>(psy.size(), 0)));
     timeintegral.resize(2, std::vector<std::vector<complex>>(psx.size(), std::vector<complex>(psy.size(), 0)));
 
+    std::chrono::high_resolution_clock::time_point startTime = std::chrono::high_resolution_clock::now();
+
     for (int i = 1; i < ts.size(); i++){ //for each time
         for(int j =0; j < 2; j++){ //for each component of the field
             for(int k = 0; k < psx.size(); k++){ //for each x momentum
@@ -200,7 +204,22 @@ void SFA::Execute2d() {
             //calculate the integral over momentum at the time step
             dipole2d[i][j] = Trapz2D(psx, psy, momentumIntegrand[j]);
         }
+        //-------------------for tracking progress of the calculation-------------------
+        std::chrono::high_resolution_clock::time_point endTime = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> timeSpan = std::chrono::duration_cast<std::chrono::duration<double>>(endTime - startTime);
+        double iterationsPerSecond = i / timeSpan.count();
+        double estimatedTime = (ts.size() - i) / iterationsPerSecond;
+        int minutes = estimatedTime / 60;
+        int hours = minutes / 60;
+        int estimatedTimeSeconds = (int)estimatedTime % 60;
+        int estimatedTimeMinutes = minutes % 60;
+        int estimatedTimeHours = hours;
+
+        std::cout << std::setprecision(2) << "its[" << i << " / " << ts.size() << "] its/s[" << iterationsPerSecond
+                  << "] remaining[" << estimatedTimeHours << "h " << estimatedTimeMinutes << "m " << estimatedTimeSeconds << "s]"  << "\r" << std::flush;
+
     }
+    std::cout << std::endl;
     
 }
 void SFA::ComputeHHG1D() {
@@ -220,6 +239,18 @@ void SFA::ComputeHHG1D() {
     } 
 }
 
+void SFA::ComputeHHG2D() {
+    //window dipole in time domain
+    hhg2d.resize(frequencies.size(), std::vector<complex>(2, 0));
+    for (int i = 0; i < frequencies.size(); i++) {
+        for (int j = 0; j < ts.size(); j++) {
+            hhg2d[i][0] += dipole2d[j][0] * exp(-1i * frequencies[i] * ts[j]);
+            hhg2d[i][1] += dipole2d[j][1] * exp(-1i * frequencies[i] * ts[j]);
+        }
+    }
+
+}
+
 bool SFA::StoreHHG1D(const std::string& filename){
     int nf = frequencies.size();
     std::ofstream file(filename);
@@ -236,17 +267,48 @@ bool SFA::StoreHHG1D(const std::string& filename){
     return true;
 }
 
+bool SFA::StoreHHG2D(const std::string& filename)
+{
+    int nf = frequencies.size();
+    std::ofstream file(filename);
+    if (!file.is_open())
+        return false;
+    file << std::setprecision(8) << std::scientific;
+    for (int iff = 0; iff < nf; iff++) {
+        file << frequencies[iff] << "\t"
+             << std::real(hhg2d[iff][0]) << "\t"
+             << std::imag(hhg2d[iff][0]) << "\t"
+             << std::real(hhg2d[iff][1]) << "\t"
+             << std::imag(hhg2d[iff][1]) << "\n";
+    }
+
+}
+
 bool SFA::StoreDipole(const std::string& filename)
 {
     std::ofstream file(filename);
     if (!file.is_open())
         return false;
     file << std::setprecision(8) << std::scientific;
-
     for(int i = 0; i < dipole.size(); i++){
         file << ts[i] << "\t"
              << std::real(dipole[i]) << "\t"
              << std::imag(dipole[i]) << "\n";
+    }
+}
+
+bool SFA::StoreDipole2d(const std::string& filename)
+{
+    std::ofstream file(filename);
+    if (!file.is_open())
+        return false;
+    file << std::setprecision(8) << std::scientific;
+    for (int i = 0; i < dipole2d.size(); i++) {
+        file << ts[i] << "\t"
+             << std::real(dipole2d[i][0]) << "\t"
+             << std::imag(dipole2d[i][0]) << "\t"
+             << std::real(dipole2d[i][1]) << "\t"
+             << std::imag(dipole2d[i][1]) << "\n";
     }
 }
 

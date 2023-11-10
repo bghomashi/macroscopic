@@ -34,12 +34,13 @@ struct SFA {
     std::vector<complex> dipole;
     std::vector<std::vector<complex>> dipole2d;
     std::vector<complex> hhg;
+    std::vector<std::vector<complex>> hhg2d;
 
 
 
     void SetupTimeIntegrationVariables(double dt, double tmax);
     void SetupMomentumIntegrationVariables(double dp, double pmax, double pmin);
-    void SetupMomentumIntegrationVariables(double dpx, double dpy, double pxmax, double pymax);
+    void SetupMomentumIntegrationVariables(double dpx, double pxmin, double pxmax, double dpy, double pymin, double pymax);
     void SetupFrequencyVariables(double df, double pmax, double pmin);
 
     void SetupField();
@@ -51,9 +52,12 @@ struct SFA {
     void Execute2d();
 
     void ComputeHHG1D();
+    void ComputeHHG2D();
     bool StoreField(const std::string& filename);
     bool StoreDipole(const std::string& filename);
+    bool StoreDipole2d(const std::string& filename);
     bool StoreHHG1D(const std::string& filename);
+    bool StoreHHG2D(const std::string& filename);
     
 
 };
