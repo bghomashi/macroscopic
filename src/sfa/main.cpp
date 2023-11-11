@@ -11,7 +11,7 @@ double N = 10;
 double CEP = 0;
 
 // sfa params
-double dt = 0.02;
+double dt = 0.05;
 double tmax = (2*pi/w0) * N;
 double dp = 0.01;
 double pmin = -3, pmax = 3;
@@ -42,18 +42,17 @@ int main() {
     sfa.SetupMomentumIntegrationVariables(dp, pmax, pmin, dp, pmax, pmin);
     sfa.SetupField();
     
-
-    sfa.SattlePoint1d();
+    sfa.SaddlePoint2d();
+    //sfa.SaddlePoint1d();
     //sfa.Execute1d();
-    //std::cout << "Executing 2d..." << std::endl;
     //sfa.Execute2d();
 
-    sfa.ComputeHHG1D();
-    sfa.StoreHHG1D("hhg_At.out");
+    //sfa.ComputeHHG1D();
+    //sfa.StoreHHG1D("hhg_At.out");
     
     //sfa.StoreDipole2d("dipole.out");
-    //sfa.ComputeHHG2D();
-    //sfa.StoreHHG2D("hhg.out");
+    sfa.ComputeHHG2D();
+    sfa.StoreHHG2D("hhg.out");
     std::cout << "Done." << std::endl;
     
     return 0;
