@@ -144,6 +144,10 @@ double SFA::Action(double px, int timestep) const {
     double AA = integralAsq[timestep].x;
     return .5*(H0 * t + pA + AA);
 }
+double SFA::Action(double px, int t, int tp) const {
+    return Action(px, t) - Action(px, tp);
+}
+
 void SFA::Execute1d() {
     
     dipole.resize(ts.size(), 0);
@@ -165,7 +169,7 @@ void SFA::Execute1d() {
         dipole[i] = Trapz(psx, momentumIntegrand);
     }
 }
-
+/*
 void SFA::SaddlePoint1d()
 {
     dipole.resize(ts.size(), 0);
@@ -200,6 +204,43 @@ void SFA::SaddlePoint1d()
                   << "] remaining[" << estimatedTimeHours << "h " << estimatedTimeMinutes << "m " << estimatedTimeSeconds << "s]"  << "\r" << std::flush;
     }
     std::cout << std::endl;
+}
+*/
+
+void SFA::SaddlePoint1d()
+{
+    dipole.resize(ts.size(), 0);
+    double spm; //saddle point momentum
+    complex prev = 0;// previous time integrand
+    complex next = 0;// next time integrand
+
+    std::function<double(double t, double tp)> saddleMomentum = [this](double t, double tp){
+        return ts[t]*(integralA[t].x - integralA[tp].x)/(ts[t] - ts[tp]);
+    }; // saddle point momentum
+
+    std::chrono::high_resolution_clock::time_point startTime = std::chrono::high_resolution_clock::now();
+
+    for (int i = 1; i < ts.size(); i++){ //t
+        for (int j = 1; j < i; j++){ //t'
+            spm = saddleMomentum(i, j); 
+            next = std::conj(dtm(spm + Atot[i].x)) * exp(-1i*Action(spm, i, j)) * Etot[j].x * dtm(spm + Atot[j].x);
+            dipole[i] += .5 * (prev  + next) * (ts[j] - ts[j-1]); // trapezoidal rule
+            prev = next;
+        }
+        //-------------------for tracking progress of the calculation-------------------
+        std::chrono::high_resolution_clock::time_point endTime = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> timeSpan = std::chrono::duration_cast<std::chrono::duration<double>>(endTime - startTime);
+        double iterationsPerSecond = i / timeSpan.count();
+        double estimatedTime = (ts.size() - i) / iterationsPerSecond;
+        int minutes = estimatedTime / 60;
+        int hours = minutes / 60;
+        int estimatedTimeSeconds = (int)estimatedTime % 60;
+        int estimatedTimeMinutes = minutes % 60;
+        int estimatedTimeHours = hours;
+
+        std::cout << std::setprecision(2) << "its[" << i << " / " << ts.size() << "] its/s[" << iterationsPerSecond
+                  << "] remaining[" << estimatedTimeHours << "h " << estimatedTimeMinutes << "m " << estimatedTimeSeconds << "s]"  << "\r" << std::flush;
+    }
 }
 
 void SFA::SaddlePoint2d()

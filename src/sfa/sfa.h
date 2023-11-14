@@ -48,6 +48,7 @@ struct SFA {
     double Action(double px, double py, double pz, int timstep) const;
     double Action(double px, double py, int timestep) const;
     double Action(double px, int timestep) const;
+    double Action(double px, int t, int tp) const;
     void Execute1d();
     void SaddlePoint1d();
     void Execute2d();

@@ -42,17 +42,17 @@ int main() {
     sfa.SetupMomentumIntegrationVariables(dp, pmax, pmin, dp, pmax, pmin);
     sfa.SetupField();
     
-    sfa.SaddlePoint2d();
-    //sfa.SaddlePoint1d();
+    //sfa.SaddlePoint2d();
+    sfa.SaddlePoint1d();
     //sfa.Execute1d();
     //sfa.Execute2d();
 
-    //sfa.ComputeHHG1D();
-    //sfa.StoreHHG1D("hhg_At.out");
+    sfa.ComputeHHG1D();
+    sfa.StoreHHG1D("hhg_At.out");
     
     //sfa.StoreDipole2d("dipole.out");
-    sfa.ComputeHHG2D();
-    sfa.StoreHHG2D("hhg.out");
+    //sfa.ComputeHHG2D();
+    //sfa.StoreHHG2D("hhg.out");
     std::cout << "Done." << std::endl;
     
     return 0;
