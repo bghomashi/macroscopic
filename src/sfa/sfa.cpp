@@ -54,11 +54,8 @@ void SFA::SetupField() {
             axtot += p->A(t).x;
         return axtot;
     };
-    std::function<double(double)> Asqxtot = [this](double t) {
-        double asqxtot = 0;
-        for (auto& p : pulse)
-            asqxtot += p->A(t).x * p->A(t).x;
-        return asqxtot;
+    std::function<double(double)> Asqxtot = [this, Axtot](double t) {
+        return (Axtot(t) * Axtot(t));
     };
     std::function<double(double)> Aytot = [this](double t) {
         double aytot = 0;
@@ -66,11 +63,8 @@ void SFA::SetupField() {
             aytot += p->A(t).y;
         return aytot;
     };
-    std::function<double(double)> Asqytot = [this](double t) {
-        double asqytot = 0;
-        for (auto& p : pulse)
-            asqytot += p->A(t).y * p->A(t).y;
-        return asqytot;
+    std::function<double(double)> Asqytot = [this, Aytot](double t) {
+        return (Aytot(t) * Aytot(t));
     };
     std::function<double(double)> Aztot = [this](double t) {
         double aztot = 0;
@@ -78,17 +72,14 @@ void SFA::SetupField() {
             aztot += p->A(t).z;
         return aztot;
     };
-    std::function<double(double)> Asqztot = [this](double t) {
-        double asqztot = 0;
-        for (auto& p : pulse)
-            asqztot += p->A(t).z * p->A(t).z;
-        return asqztot;
+    std::function<double(double)> Asqztot = [this, Aztot](double t) {
+        return (Aztot(t) * Aztot(t));
     };
     integralA.resize(ts.size());
     integralAsq.resize(ts.size());
     
     //produces time indexed vectors for integral of A and A^2
-    std::vector<double> integralAx = TrapzInd(ts, Aztot);
+    std::vector<double> integralAx = TrapzInd(ts, Axtot);
     std::vector<double> integralAy = TrapzInd(ts, Aytot);
     std::vector<double> integralAz = TrapzInd(ts, Aztot);
     std::vector<double> integralAx2 = TrapzInd(ts, Asqxtot);
@@ -120,15 +111,6 @@ void SFA::SetupField() {
     
 }
 
-double SFA::Action(double px, double py, double pz, int timstep) const {
- ///action within time integral is integral[[p+A]^2, dt] + Ip*t
-    double t = ts[timstep];
-    double H0 = px*px + py*py + pz*pz + Ip;
-    double pA = 2*px*integralA[timstep].x + py*integralA[timstep].y + pz*integralA[timstep].z;
-    double AA = integralAsq[timstep].x + integralAsq[timstep].y + integralAsq[timstep].z;
-    return .5*(H0 * t + pA + AA);
-
-}
 double SFA::Action(double px, double py, int timestep) const
 {
     double t = ts[timestep];
@@ -146,6 +128,9 @@ double SFA::Action(double px, int timestep) const {
 }
 double SFA::Action(double px, int t, int tp) const {
     return Action(px, t) - Action(px, tp);
+}
+double SFA::Action(double px, double py, int t, int tp) const {
+    return Action(px, py, t) - Action(px, py, tp);
 }
 
 void SFA::Execute1d() {
@@ -169,43 +154,7 @@ void SFA::Execute1d() {
         dipole[i] = Trapz(psx, momentumIntegrand);
     }
 }
-/*
-void SFA::SaddlePoint1d()
-{
-    dipole.resize(ts.size(), 0);
-    std::function<complex(double,int)> timeIntegrand = [this](double p, int t){
-        return exp(1i*(Action(p, t))) *  Etot[t].x * dtm(p + Atot[t].x);
-    };
-    double psad; //saddle point momentum
-    complex timeintegral;
 
-    std::chrono::high_resolution_clock::time_point startTime = std::chrono::high_resolution_clock::now();
-
-    for(int i = 1; i < ts.size(); i++){
-        psad = integralA[i].x / ts[i]; //find the saddle point momentum for the time i
-        timeintegral = 0;
-        for(int j = 1; j < i; j++){
-            timeintegral += 0.5*(timeIntegrand(psad, j) + timeIntegrand(psad, j-1))*(ts[j] - ts[j-1]); // calculate the time integral up the time i
-        }
-        dipole[i] = timeintegral * exp(-1i*Action(psad, i)) * std::conj(dtm(psad + Atot[i].x)); //calculate the dipole at time i
-
-        //-------------------for tracking progress of the calculation-------------------
-        std::chrono::high_resolution_clock::time_point endTime = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double> timeSpan = std::chrono::duration_cast<std::chrono::duration<double>>(endTime - startTime);
-        double iterationsPerSecond = i / timeSpan.count();
-        double estimatedTime = (ts.size() - i) / iterationsPerSecond;
-        int minutes = estimatedTime / 60;
-        int hours = minutes / 60;
-        int estimatedTimeSeconds = (int)estimatedTime % 60;
-        int estimatedTimeMinutes = minutes % 60;
-        int estimatedTimeHours = hours;
-
-        std::cout << std::setprecision(2) << "its[" << i << " / " << ts.size() << "] its/s[" << iterationsPerSecond
-                  << "] remaining[" << estimatedTimeHours << "h " << estimatedTimeMinutes << "m " << estimatedTimeSeconds << "s]"  << "\r" << std::flush;
-    }
-    std::cout << std::endl;
-}
-*/
 
 void SFA::SaddlePoint1d()
 {
@@ -215,7 +164,7 @@ void SFA::SaddlePoint1d()
     complex next = 0;// next time integrand
 
     std::function<double(double t, double tp)> saddleMomentum = [this](double t, double tp){
-        return ts[t]*(integralA[t].x - integralA[tp].x)/(ts[t] - ts[tp]);
+        return (integralA[t].x - integralA[tp].x)/(ts[t] - ts[tp]);
     }; // saddle point momentum
 
     std::chrono::high_resolution_clock::time_point startTime = std::chrono::high_resolution_clock::now();
@@ -243,32 +192,38 @@ void SFA::SaddlePoint1d()
     }
 }
 
-void SFA::SaddlePoint2d()
-{
+void SFA::SaddlePoint2d() {
     dipole2d.resize(ts.size(), std::vector<complex>(2, 0));
-    std::function<complex(double,double,int)> timeIntegrandx = [this](double px, double py, int t){
-        return exp(1i*Action(px, py, t)) *  Etot[t].x * dtm2d(px + Atot[t].x, py + Atot[t].y);
-    };
-    std::function<complex(double, double, int)> timeIntegrandy = [this](double px, double py, int t){
-        return exp(1i*Action(px, py, t)) *  Etot[t].y * dtm2d(px + Atot[t].x, py + Atot[t].y);
-    };
+    double spmx, spmy; //saddle point momentum
+    complex prevx = 0;// previous time integrand
+    complex prevy = 0;// previous time integrand
+    complex nextx = 0;// next time integrand
+    complex nexty = 0;// next time integrand
+    complex EdotD; 
 
-    double psadx, psady; //saddle point momentum
-    complex timeintegralx, timeintegraly;
+    std::function<double(double t, double tp)> saddleMomentumx = [this](double t, double tp) {
+        return (integralA[t].x - integralA[tp].x) / (ts[t] - ts[tp]);
+    }; // saddle point momentum
+    std::function<double(double t, double tp)> saddleMomentumy = [this](double t, double tp) {
+        return (integralA[t].y - integralA[tp].y) / (ts[t] - ts[tp]);
+    }; // saddle point momentum
+
     std::chrono::high_resolution_clock::time_point startTime = std::chrono::high_resolution_clock::now();
-
-    for (int i = 1; i < ts.size(); i++){
-        psadx = integralA[i].x / ts[i];
-        psady = integralA[i].y / ts[i];
-        timeintegralx = 0;
-        timeintegraly = 0;
-        for (int j = 1; j < i; j++){
-            timeintegralx += 0.5*(timeIntegrandx(psadx, psady, j) + timeIntegrandx(psadx, psady, j-1))*(ts[j] - ts[j-1]);
-            timeintegraly += 0.5*(timeIntegrandy(psadx, psady, j) + timeIntegrandy(psadx, psady, j-1))*(ts[j] - ts[j-1]);
+    
+    for (int i = 1; i < ts.size(); i++) { //t
+        for (int j = 1; j < i; j++) { //t'
+            spmx = saddleMomentumx(i, j);
+            spmy = saddleMomentumy(i, j);
+            EdotD = Etot[j].x * dtm2d(spmx + Atot[j].x, spmy + Atot[j].y)[0] + Etot[j].y * dtm2d(spmx + Atot[j].x, spmy + Atot[j].y)[1];
+            nextx = std::conj(dtm2d(spmx + Atot[i].x, spmy + Atot[i].y)[0]) * exp(-1i*Action(spmx, spmy, i, j)) * EdotD;
+            nexty = std::conj(dtm2d(spmx + Atot[i].x, spmy + Atot[i].y)[1]) * exp(-1i*Action(spmx, spmy, i, j)) * EdotD;
+            dipole2d[i][0] += .5 * (prevx + nextx) * (ts[j] - ts[j - 1]); // trapezoidal rule
+            dipole2d[i][1] += .5 * (prevy + nexty) * (ts[j] - ts[j - 1]); // trapezoidal rule
+            prevx = nextx;
+            prevy = nexty;
         }
-        dipole2d[i][0] = timeintegralx * exp(-1i*Action(psadx, psady, i)) * std::conj(dtm2d(psadx + Atot[i].x, psady + Atot[i].y));
-        dipole2d[i][1] = timeintegraly * exp(-1i*Action(psadx, psady, i)) * std::conj(dtm2d(psadx + Atot[i].x, psady + Atot[i].y));
-                //-------------------for tracking progress of the calculation-------------------
+        
+        //-------------------for tracking progress of the calculation-------------------
         std::chrono::high_resolution_clock::time_point endTime = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> timeSpan = std::chrono::duration_cast<std::chrono::duration<double>>(endTime - startTime);
         double iterationsPerSecond = i / timeSpan.count();
@@ -280,33 +235,23 @@ void SFA::SaddlePoint2d()
         int estimatedTimeHours = hours;
 
         std::cout << std::setprecision(2) << "its[" << i << " / " << ts.size() << "] its/s[" << iterationsPerSecond
-                  << "] remaining[" << estimatedTimeHours << "h " << estimatedTimeMinutes << "m " << estimatedTimeSeconds << "s]"  << "\r" << std::flush;
+                << "] remaining[" << estimatedTimeHours << "h " << estimatedTimeMinutes << "m " << estimatedTimeSeconds << "s]"  << "\r" << std::flush; 
     }
-    std::cout << std::endl;
 }
+
 void SFA::Execute2d() {
 
     
     dipole2d.resize(ts.size(), std::vector<complex>(2, 0));
-    std::function<complex(double,double,int)> timeIntegrandx = [this](double px, double py, int t){
-        return exp(1i*Action(px, py, t)) *  Etot[t].x * dtm2d(px + Atot[t].x, py + Atot[t].y);
+    std::function<complex(double, double, int)> timeIntegrand = [this](double px, double py, int t){
+        return exp(1i*Action(px, py, t)) * (Etot[t].x * dtm2d(px + Atot[t].x, py + Atot[t].y)[0] + Etot[t].y * dtm2d(px + Atot[t].x, py + Atot[t].y)[1]);
     };
-    std::function<complex(double, double, int)> timeIntegrandy = [this](double px, double py, int t){
-        return exp(1i*Action(px, py, t)) *  Etot[t].y * dtm2d(px + Atot[t].x, py + Atot[t].y);
-    };
-
-    std::function<std::vector<complex>(double, double, int)> timeIntegrand = [this](double px, double py, int t){
-        std::vector<complex> timeIntegrand;
-        timeIntegrand.resize(2);
-        timeIntegrand[0] = exp(1i*Action(px, py, t)) *  Etot[t].x * dtm2d(px + Atot[t].x, py + Atot[t].y);
-        timeIntegrand[1] = exp(1i*Action(px, py, t)) *  Etot[t].y * dtm2d(px + Atot[t].x, py + Atot[t].y);
-        return timeIntegrand;
-    };
-
-    std::vector<std::vector<std::vector<complex>>> timeintegral;
+    std::vector<std::vector<complex>> timeintegral;
     std::vector<std::vector<std::vector<complex>>> momentumIntegrand; //data structure looks like f[0](x)(y) is the x component and f[1](x)(y) is the y component
     momentumIntegrand.resize(2, std::vector<std::vector<complex>>(psx.size(), std::vector<complex>(psy.size(), 0)));
-    timeintegral.resize(2, std::vector<std::vector<complex>>(psx.size(), std::vector<complex>(psy.size(), 0)));
+    //resize time integral to be an array that is psx.size by psy.size
+    timeintegral.resize(psx.size(), std::vector<complex>(psy.size(), 0));
+    
 
     std::chrono::high_resolution_clock::time_point startTime = std::chrono::high_resolution_clock::now();
 
@@ -315,8 +260,8 @@ void SFA::Execute2d() {
             for(int k = 0; k < psx.size(); k++){ //for each x momentum
                 for(int l =0; l < psy.size(); l++){ //for each y momentum
                     //perform trapezoidal rule to get the next timestep
-                    timeintegral[j][k][l] = timeintegral[j][k][l] + 0.5*(timeIntegrand(psx[k], psy[l], i)[j] + timeIntegrand(psx[k], psy[l], i-1)[j])*(ts[i] - ts[i-1]);
-                    momentumIntegrand[j][k][l] = timeintegral[j][k][l] * exp(-1i*Action(psx[k], psy[l], i)) * std::conj(dtm2d(psx[j] + Atot[i].x, psy[k] + Atot[i].y));
+                    timeintegral[k][l] = timeintegral[k][l] + 0.5*(timeIntegrand(psx[k], psy[l], i) + timeIntegrand(psx[k], psy[l], i-1))*(ts[i] - ts[i-1]);
+                    momentumIntegrand[j][k][l] = timeintegral[k][l] * exp(-1i*Action(psx[k], psy[l], i)) * std::conj(dtm2d(psx[j] + Atot[i].x, psy[k] + Atot[i].y)[j]);
                 }
             }
             //calculate the integral over momentum at the time step
@@ -340,14 +285,14 @@ void SFA::Execute2d() {
     std::cout << std::endl;
     
 }
+
 void SFA::ComputeHHG1D() {
     //window dipole in time domain
-    /*
+
     std::vector<double> window = blackman(dipole.size());
     for (int i = 0; i < dipole.size(); i++) {
         dipole[i] *= window[i];
     }
-    */
     //compute hhg
     hhg.resize(frequencies.size(), 0);
     for (int i = 0; i < frequencies.size(); i++) {
@@ -359,6 +304,12 @@ void SFA::ComputeHHG1D() {
 
 void SFA::ComputeHHG2D() {
     //window dipole in time domain
+
+    std::vector<double> window = blackman(dipole2d.size());
+    for (int i = 0; i < dipole2d.size(); i++) {
+        dipole2d[i][0] *= window[i];
+        dipole2d[i][1] *= window[i];
+    }
     hhg2d.resize(frequencies.size(), std::vector<complex>(2, 0));
     for (int i = 0; i < frequencies.size(); i++) {
         for (int j = 0; j < ts.size(); j++) {
@@ -387,6 +338,7 @@ bool SFA::StoreHHG1D(const std::string& filename){
 
 bool SFA::StoreHHG2D(const std::string& filename)
 {
+
     int nf = frequencies.size();
     std::ofstream file(filename);
     if (!file.is_open())
@@ -430,8 +382,48 @@ bool SFA::StoreDipole2d(const std::string& filename)
     }
 }
 
+bool SFA::StoreDTM2d(const std::string& filename)
+{
+    std::ofstream file(filename);
+    if (!file.is_open())
+        return false;
+    file << std::setprecision(8) << std::scientific;
+    for (int i = 0; i < psx.size(); i++) {
+        for (int j = 0; j < psy.size(); j++) {
+            file << psx[i] << "\t"
+                 << psy[j] << "\t"
+                 << std::real(dtm2d(psx[i], psy[j])[0]) << "\t"
+                 << std::imag(dtm2d(psx[i], psy[j])[0]) << "\t"
+                 << std::real(dtm2d(psx[i], psy[j])[1]) << "\t"
+                 << std::imag(dtm2d(psx[i], psy[j])[1]) << "\n";
+        }
+    }
+}
+
+bool SFA::StoreField(const std::string& filename)
+{
+    std::ofstream file(filename);
+    if (!file.is_open())
+        return false;
+    file << std::setprecision(8) << std::scientific;
+    for (int i = 0; i < ts.size(); i++) {
+        file << ts[i] << "\t"
+             << Etot[i].x << "\t"
+             << Etot[i].y << "\t"
+             << Etot[i].z << "\t"
+             << Atot[i].x << "\t"
+             << Atot[i].y << "\t"
+             << Atot[i].z << "\t"
+             << integralA[i].x << "\t"
+             << integralA[i].y << "\t"
+             << integralA[i].z << "\t"
+             << integralAsq[i].x << "\t"
+             << integralAsq[i].y << "\t"
+             << integralAsq[i].z << "\n";
 
 
+    }
+}
 
 
 
@@ -456,6 +448,8 @@ bool Pulse::Store(const std::string& filename, const std::vector<double>& times)
 
     return true;
 }
+
+
 
 
 

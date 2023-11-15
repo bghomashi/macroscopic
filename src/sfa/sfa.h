@@ -27,7 +27,7 @@ struct SFA {
     std::vector<point3> integralAsq;
     std::vector<point3> Etot; 
     std::function<complex(double)> dtm;
-    std::function<complex(double, double)> dtm2d;
+    std::function<std::vector<complex>(double, double)> dtm2d;
 
     std::vector<double> ts, psx, psy, psz;
     std::vector<double> frequencies;
@@ -45,10 +45,10 @@ struct SFA {
 
     void SetupField();
 
-    double Action(double px, double py, double pz, int timstep) const;
     double Action(double px, double py, int timestep) const;
     double Action(double px, int timestep) const;
     double Action(double px, int t, int tp) const;
+    double Action(double px, double py, int t, int tp) const;
     void Execute1d();
     void SaddlePoint1d();
     void Execute2d();
@@ -61,6 +61,7 @@ struct SFA {
     bool StoreDipole2d(const std::string& filename);
     bool StoreHHG1D(const std::string& filename);
     bool StoreHHG2D(const std::string& filename);
+    bool StoreDTM2d(const std::string& filename);
     
 
 };

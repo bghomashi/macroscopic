@@ -11,8 +11,8 @@ point3 Sin2Pulse::A(double t) const {
     // double phase = cep - w0*duration/2.;
     double phase = CEP - pi*N;
     point3 val{0, 0, 0};
-    val.x = (E0/w0)*sin(0.5*w0*t/N)*sin(0.5*w0*t/N)*sin(w0*t + phase);
-    val.y = .5*(E0/w0/2)*sin(0.5*w0*t/N/2)*sin(0.5*w0*t/N/2)*sin(w0*t/2 + phase);
+    val.x = sqrt(.5)*(E0/w0)*sin(0.5*w0*t/N)*sin(0.5*w0*t/N)*sin(w0*t + phase);
+    val.y = sqrt(.5)*(E0/w0)*sin(0.5*w0*t/N)*sin(0.5*w0*t/N)*sin(w0*t + phase);
     return val;
 }
 // electric field
@@ -22,11 +22,11 @@ point3 Sin2Pulse::E(double t) const {
     // double phase = cep - w0*duration/2.;
     double phase = CEP - pi*N;
     point3 val{0, 0, 0};
-    val.x = -E0*(sin(0.5*w0*t/N)*sin(0.5*w0*t/N)*cos(w0*t + phase)
+    val.x = -sqrt(.5)*E0*(sin(0.5*w0*t/N)*sin(0.5*w0*t/N)*cos(w0*t + phase)
               + cos(0.5*w0*t/N)*sin(0.5*w0*t/N)*sin(w0*t + phase) / N);
 
-    val.y = -.5*E0*(sin(0.5*w0*t/N/2)*sin(0.5*w0*t/N/2)*cos(w0*t/2 + phase)
-              + cos(0.5*w0*t/N/2)*sin(0.5*w0*t/N/2)*sin(w0*t/2 + phase) / N);
+    val.y = -sqrt(.5)*E0*(sin(0.5*w0*t/N)*sin(0.5*w0*t/N)*cos(w0*t + phase)
+              + cos(0.5*w0*t/N)*sin(0.5*w0*t/N)*sin(w0*t + phase) / N);
     return val;
 }
 // integral of vector potential
