@@ -13,7 +13,7 @@ double CEP = 0;
 // sfa params
 double dt = .1;
 double tmax = (2*pi/w0) * N;
-double dp = 1;
+double dp = .01;
 double pmin = -3, pmax = 3;
 double dff = 0.01;
 double ffmin = 0.*w0, ffmax = 40.*w0;
